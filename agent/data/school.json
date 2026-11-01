@@ -1,0 +1,38 @@
+{
+  "about": {
+    "keywords": ["about", "school", "name", "who", "medium", "english", "values", "pragathi"],
+    "text": "Sri Pragathi Vidyaniketan EM High School is an English-medium school in Kota, Andhra Pradesh. 'Pragathi' means progress. The school focuses on values (tolerance, respect, heritage), bilingual clarity (concepts explained in English and Telugu), stage confidence, and AI-ready learning."
+  },
+  "address": {
+    "keywords": ["address", "location", "where", "map", "directions", "visit", "kota", "pin"],
+    "text": "Sri Pragathi Vidyaniketan EM High School, Kota, Andhra Pradesh, PIN 524411."
+  },
+  "contact": {
+    "keywords": ["contact", "phone", "call", "number", "email", "office", "whatsapp"],
+    "text": null
+  },
+  "timings": {
+    "keywords": ["timing", "timings", "time", "hours", "start", "close", "open", "bell"],
+    "text": null
+  },
+  "fees": {
+    "keywords": ["fee", "fees", "cost", "price", "payment", "pay", "tuition", "amount"],
+    "text": null
+  },
+  "admissions": {
+    "keywords": ["admission", "admissions", "join", "enroll", "enrol", "apply", "seat", "documents", "process"],
+    "text": "Admission process: 1) Send an enquiry (on the website or at the school office). 2) Campus visit to meet teachers and see classrooms. 3) A friendly interaction with the child. 4) Confirm admission by completing documents and fee formalities. The assistant can record an enquiry for the office to call back."
+  },
+  "academics": {
+    "keywords": ["class", "classes", "academics", "syllabus", "subjects", "primary", "high school", "nursery", "lkg", "ukg", "teaching"],
+    "text": "Learning stages: Early Years (phonics, rhymes, number sense, art and movement), Primary (reading, writing, maths, Word of the Day, stage presentations, science), High School (board exam readiness, concept-based teaching, AI and digital literacy)."
+  },
+  "activities": {
+    "keywords": ["activity", "activities", "stage", "speaking", "presentation", "word of the day", "vocabulary", "events"],
+    "text": "Students learn a new Word of the Day every morning (meaning, example, synonyms and antonyms in English and Telugu) and regularly take the stage to present and hold conversations in English."
+  },
+  "app": {
+    "keywords": ["app", "ai", "login", "attendance", "homework", "summary", "summaries", "parent portal"],
+    "text": "The SPV School App (coming soon) will offer parent login by registered phone number, smart attendance from scanned registers, AI chapter summaries and quizzes, this Ask SPV assistant, Word of the Day practice, and an easy admin panel for staff."
+  }
+}

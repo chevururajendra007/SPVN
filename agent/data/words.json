@@ -1,0 +1,22 @@
+[
+  {"no": 17, "date": "2026-10-28", "word": "Heritage", "telugu": "వారసత్వం",
+   "meaning": "The traditions, culture, history, or valuable things that are passed down from the past.",
+   "example": "Our country's rich heritage includes its ancient temples and culture.",
+   "synonyms": ["Tradition", "Culture", "Legacy", "Ancestry", "Historical"],
+   "antonyms": ["Modern", "New", "Forgetful", "Temporary", "Ignorant"]},
+  {"no": 19, "date": "2026-10-29", "word": "Tolerance", "telugu": "సహనం",
+   "meaning": "The kindness and willingness to accept differences, respect others and live together peacefully.",
+   "example": "Tolerance helps us build a peaceful and friendly society.",
+   "synonyms": ["Patience", "Forbearance", "Acceptance", "Compassion", "Understanding"],
+   "antonyms": ["Intolerance", "Disrespect", "Hate", "Division", "Prejudice"]},
+  {"no": 20, "date": "2026-10-30", "word": "Prosperity", "telugu": "సమృద్ధి",
+   "meaning": "The state of being successful, wealthy and happy. Growth and good fortune.",
+   "example": "Education brings prosperity to our lives.",
+   "synonyms": ["Wealth", "Success", "Growth", "Abundance", "Flourishing"],
+   "antonyms": ["Poverty", "Loss", "Hardship", "Decline", "Misery"]},
+  {"no": 21, "date": "2026-10-31", "word": "Universal", "telugu": "ప్రపంచవ్యాప్తం",
+   "meaning": "Belonging to or concerning everyone; worldwide.",
+   "example": "Education is a universal right for every child.",
+   "synonyms": ["Worldwide", "Global", "Common", "Inclusive", "Panoramic"],
+   "antonyms": ["Local", "Limited", "Partial", "Exclusive", "Narrow"]}
+]
