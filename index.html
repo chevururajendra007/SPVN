@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sri Pragathi Vidyaniketan EM High School, Kota</title>
+<meta name="description" content="Sri Pragathi Vidyaniketan EM High School, Kota, Andhra Pradesh 524411. English-medium education with values, confidence and AI-ready learning.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#16204a; --navy-2:#1f2a5c; --gold:#f2a900; --gold-soft:#fff4d6;
+  --ink:#1b2340; --muted:#5b6582; --line:#e4e8f2; --bg:#ffffff; --bg-2:#f5f7fc;
+  --green:#2e8b57; --red:#c0392b;
+  --radius:18px; --shadow:0 18px 40px -18px rgba(22,32,74,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:Inter,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
+img,video{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+.wrap{width:min(1180px,100% - 32px);margin-inline:auto}
+h1,h2,h3{font-family:Fraunces,Georgia,serif;line-height:1.15;color:var(--navy)}
+h2{font-size:clamp(1.9rem,3.6vw,2.8rem);margin-bottom:.6rem}
+.eyebrow{font-size:.78rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:.8rem;display:block}
+.lead{color:var(--muted);font-size:1.08rem;max-width:640px}
+section{padding:96px 0}
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.9rem 1.5rem;border-radius:999px;font-weight:600;font-size:.95rem;transition:transform .2s,box-shadow .2s,background .2s;border:0;cursor:pointer;font-family:inherit}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 10px 24px -10px rgba(242,169,0,.8)}
+.btn-ghost{border:1.5px solid rgba(255,255,255,.55);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.12)}
+
+/* top bar + nav */
+.topbar{background:var(--navy);color:#cfd6ee;font-size:.82rem}
+.topbar .wrap{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;flex-wrap:wrap}
+.topbar b{color:var(--gold);font-weight:600}
+header.nav{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;padding:.7rem 0}
+.brand{display:flex;align-items:center;gap:.8rem}
+.brand img{width:52px;height:52px}
+.brand strong{font-family:Fraunces,serif;color:var(--navy);font-size:1.12rem;display:block;line-height:1.15}
+.brand small{color:var(--muted);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase}
+.links{display:flex;gap:1.6rem;align-items:center;font-weight:500;font-size:.93rem}
+.links a:not(.btn):hover{color:var(--gold)}
+.menu-btn{display:none;background:none;border:0;font-size:1.6rem;color:var(--navy);cursor:pointer}
+
+/* hero */
+.hero{position:relative;color:#fff;padding:0;overflow:hidden;background:var(--navy)}
+.hero-bg{position:absolute;inset:0;background:url(assets/stage-60.jpg) center/cover}
+.hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,rgba(16,24,58,.96) 0%,rgba(16,24,58,.85) 45%,rgba(16,24,58,.35) 100%)}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.2fr .8fr;gap:3rem;align-items:center;min-height:620px;padding:80px 0}
+.hero h1{color:#fff;font-size:clamp(2.4rem,5.4vw,4.1rem);margin-bottom:1.2rem}
+.hero h1 em{color:var(--gold);font-style:italic}
+.hero p{color:#d7ddf2;font-size:1.12rem;max-width:560px;margin-bottom:2rem}
+.hero .ctas{display:flex;gap:1rem;flex-wrap:wrap}
+.crest{justify-self:center;text-align:center}
+.crest img{width:min(300px,70vw);filter:drop-shadow(0 25px 40px rgba(0,0,0,.5));animation:float 6s ease-in-out infinite}
+.crest span{display:block;margin-top:1.2rem;font-family:Fraunces,serif;font-size:1.05rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase}
+@keyframes float{50%{transform:translateY(-10px)}}
+
+/* pillars */
+.pillars{margin-top:-60px;position:relative;z-index:2;padding:0}
+.pillars .grid{display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.pillar{padding:1.8rem 1.6rem;border-right:1px solid var(--line)}
+.pillar:last-child{border:0}
+.pillar .ic{font-size:1.3rem;width:46px;height:46px;border-radius:50%;background:var(--navy);color:var(--gold);display:grid;place-items:center;margin-bottom:.9rem}
+.pillar h3{font-size:1.1rem;margin-bottom:.3rem}
+.pillar p{font-size:.9rem;color:var(--muted)}
+
+/* about */
+.about .wrap{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+.about-media{position:relative}
+.about-media img{border-radius:var(--radius);box-shadow:var(--shadow)}
+.about-media .small{position:absolute;width:48%;right:-24px;bottom:-40px;border:6px solid #fff}
+.values{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:2rem}
+.values div{background:var(--bg-2);border-radius:14px;padding:1rem 1.1rem}
+.values b{display:block;color:var(--navy);font-size:.98rem}
+.values span{font-size:.86rem;color:var(--muted)}
+
+/* academics */
+.academics{background:var(--bg-2)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:2.6rem}
+.card{background:#fff;border-radius:var(--radius);padding:2rem;border:1px solid var(--line);transition:transform .25s,box-shadow .25s}
+.card:hover{transform:translateY(-6px);box-shadow:var(--shadow)}
+.card .num{font-family:Fraunces,serif;font-size:2.4rem;color:var(--gold);line-height:1}
+.card h3{margin:.8rem 0 .5rem;font-size:1.3rem}
+.card p{color:var(--muted);font-size:.95rem}
+.card ul{margin-top:1rem;list-style:none;font-size:.9rem}
+.card li{padding:.3rem 0 .3rem 1.4rem;position:relative}
+.card li::before{content:"";position:absolute;left:0;top:.75rem;width:8px;height:8px;border-radius:50%;background:var(--gold)}
+
+/* word of the day */
+.wotd .head{display:flex;justify-content:space-between;align-items:end;gap:2rem;flex-wrap:wrap}
+.posters{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;margin-top:2.4rem}
+.poster{border-radius:14px;overflow:hidden;box-shadow:0 10px 30px -14px rgba(22,32,74,.4);cursor:zoom-in;position:relative;background:#fff;border:0;padding:0}
+.poster img{transition:transform .4s}
+.poster:hover img{transform:scale(1.04)}
+.poster span{position:absolute;left:10px;bottom:10px;background:var(--navy);color:#fff;font-size:.78rem;font-weight:600;padding:.3rem .7rem;border-radius:999px}
+.quiz{margin-top:3rem;background:var(--navy);color:#fff;border-radius:var(--radius);padding:2.4rem;display:grid;grid-template-columns:1fr 1.2fr;gap:2rem;align-items:center}
+.quiz h3{color:#fff;font-size:1.6rem}
+.quiz .te{font-family:"Noto Sans Telugu",sans-serif;color:var(--gold)}
+.quiz p{color:#c9d1ec;font-size:.95rem;margin-top:.4rem}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem}
+.opt{background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.2);color:#fff;border-radius:12px;padding:1rem;font:600 1rem Inter,sans-serif;cursor:pointer;transition:.2s}
+.opt:hover{background:rgba(255,255,255,.15)}
+.opt.right{background:var(--green);border-color:var(--green)}
+.opt.wrong{background:var(--red);border-color:var(--red)}
+.quiz-msg{grid-column:1/-1;min-height:1.4rem;margin-top:-1rem;color:var(--gold);font-weight:600}
+
+/* student voice */
+.voice{background:linear-gradient(180deg,var(--bg-2),#fff)}
+.voice .wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:3.5rem;align-items:center}
+.video-box{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);background:#000}
+.quote{font-family:Fraunces,serif;font-size:1.35rem;color:var(--navy);border-left:0;margin:1.5rem 0;padding:1.2rem 1.4rem;background:var(--gold-soft);border-radius:14px}
+
+/* AI */
+.ai{background:var(--navy);color:#fff;position:relative;overflow:hidden}
+.ai h2{color:#fff}
+.ai .lead{color:#c9d1ec}
+.ai::before{content:"";position:absolute;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(242,169,0,.18),transparent 70%);right:-160px;top:-160px}
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;margin-top:2.6rem;position:relative}
+.feat div{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius);padding:1.7rem}
+.feat .ic{font-size:1.3rem;width:44px;height:44px;border-radius:12px;background:var(--gold);color:var(--navy);display:grid;place-items:center;margin-bottom:1rem}
+.feat h3{color:#fff;font-size:1.15rem;margin-bottom:.4rem}
+.feat p{color:#c9d1ec;font-size:.92rem}
+.badge{display:inline-block;margin-top:.8rem;font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold)}
+
+/* gallery */
+.gallery-grid{display:grid;grid-template-columns:2fr 1fr 1fr;grid-auto-rows:220px;gap:1rem;margin-top:2.4rem}
+.gallery-grid img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.gallery-grid img:first-child{grid-row:span 2}
+
+/* admissions */
+.adm .wrap{display:grid;grid-template-columns:1fr 1fr;gap:4rem}
+.steps{list-style:none;margin-top:2rem;counter-reset:s}
+.steps li{counter-increment:s;display:flex;gap:1rem;padding:1rem 0;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);flex:none;width:38px;height:38px;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:700;display:grid;place-items:center}
+.steps b{display:block;color:var(--navy)}
+.steps span{color:var(--muted);font-size:.92rem}
+form{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:2.2rem;box-shadow:var(--shadow)}
+form h3{font-size:1.5rem;margin-bottom:1.2rem}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+label{display:block;font-size:.82rem;font-weight:600;color:var(--navy);margin-bottom:.9rem}
+input,select,textarea{width:100%;margin-top:.35rem;padding:.8rem .9rem;border:1.5px solid var(--line);border-radius:10px;font:inherit;font-weight:400;color:var(--ink);background:var(--bg-2)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);background:#fff}
+.form-ok{display:none;margin-top:1rem;padding:1rem;border-radius:10px;background:#e6f5ec;color:var(--green);font-weight:600}
+
+/* contact */
+.contact{background:var(--bg-2)}
+.contact .wrap{display:grid;grid-template-columns:1fr 1.4fr;gap:3rem;align-items:stretch}
+.addr{background:var(--navy);color:#fff;border-radius:var(--radius);padding:2.4rem}
+.addr h3{color:#fff;font-size:1.5rem;margin-bottom:1rem}
+.addr p{color:#d0d7ef;margin-bottom:1.2rem}
+.addr b{color:var(--gold)}
+.map{border-radius:var(--radius);overflow:hidden;min-height:340px;box-shadow:var(--shadow)}
+.map iframe{width:100%;height:100%;min-height:340px;border:0}
+
+footer{background:#0f1636;color:#a9b2d3;padding:3rem 0 2rem;font-size:.9rem}
+footer .wrap{display:flex;justify-content:space-between;gap:2rem;flex-wrap:wrap;align-items:center}
+footer .brand strong{color:#fff}
+.credit{font-size:.8rem;color:#7f89ad}
+
+/* lightbox */
+.lb{position:fixed;inset:0;background:rgba(10,14,35,.92);display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+.lb.open{display:flex}
+.lb img{max-height:92vh;border-radius:10px}
+.lb button{position:absolute;top:16px;right:20px;background:none;border:0;color:#fff;font-size:2.2rem;cursor:pointer}
+
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s}
+.reveal.in{opacity:1;transform:none}
+
+@media (max-width:960px){
+  .links{display:none;position:absolute;top:100%;left:0;right:0;background:#fff;flex-direction:column;padding:1.2rem 16px;border-bottom:1px solid var(--line);align-items:flex-start}
+  .links.open{display:flex}
+  .menu-btn{display:block}
+  .hero .wrap,.about .wrap,.voice .wrap,.adm .wrap,.contact .wrap,.quiz{grid-template-columns:1fr}
+  .hero .wrap{min-height:auto;padding:64px 0 110px}
+  .crest{order:-1}.crest img{width:170px}
+  .pillars .grid{grid-template-columns:1fr 1fr}
+  .pillar:nth-child(2){border-right:0}
+  .pillar{border-bottom:1px solid var(--line)}
+  .cards,.feat{grid-template-columns:1fr}
+  .posters{grid-template-columns:1fr 1fr}
+  .about-media .small{right:8px}
+  .gallery-grid{grid-template-columns:1fr 1fr;grid-auto-rows:150px}
+  .gallery-grid img:first-child{grid-column:span 2;grid-row:span 2}
+  section{padding:72px 0}
+}
+@media (max-width:560px){
+  .pillars .grid,.values,.row,.opts{grid-template-columns:1fr}
+  .pillar{border-right:0}
+  .topbar .wrap{justify-content:center;text-align:center}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <span>📍 Kota, Andhra Pradesh – 524411</span>
+  <span><b>English Medium</b> · Values · Confidence · Future-ready learning</span>
+</div></div>
+
+<header class="nav"><div class="wrap">
+  <a href="#top" class="brand"><img src="assets/logo.png" alt="Sri Pragathi Vidyaniketan logo">
+    <div><strong>Sri Pragathi Vidyaniketan</strong><small>EM High School · Kota</small></div></a>
+  <button class="menu-btn" aria-label="Open menu" onclick="document.querySelector('.links').classList.toggle('open')">☰</button>
+  <nav class="links">
+    <a href="#about">About</a><a href="#academics">Academics</a><a href="#word">Word of the Day</a>
+    <a href="#ai">AI Learning</a><a href="#contact">Contact</a>
+    <a href="#admissions" class="btn btn-gold">Admissions</a>
+  </nav>
+</div></header>
+
+<section class="hero" id="top">
+  <div class="hero-bg" role="img" aria-label="Students presenting on stage at Sri Pragathi Vidyaniketan"></div>
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Sri Pragathi Vidyaniketan EM High School</span>
+      <h1>Rooted in values.<br>Ready for the <em>AI era.</em></h1>
+      <p>An English-medium school in Kota where children learn a new word every day, speak with confidence on stage, and grow with the skills tomorrow will ask of them.</p>
+      <div class="ctas">
+        <a href="#admissions" class="btn btn-gold">Enquire for Admission →</a>
+        <a href="#voice" class="btn btn-ghost">▶ Watch our students</a>
+      </div>
+    </div>
+    <div class="crest"><img src="assets/logo.png" alt=""><span>Pragathi · Progress</span></div>
+  </div>
+</section>
+
+<section class="pillars"><div class="wrap"><div class="grid">
+  <div class="pillar reveal"><div class="ic">📖</div><h3>English Medium</h3><p>Strong English foundations, with Telugu alongside for deep understanding.</p></div>
+  <div class="pillar reveal"><div class="ic">✨</div><h3>A Word Every Day</h3><p>Our daily Word of the Day builds vocabulary, meaning and values.</p></div>
+  <div class="pillar reveal"><div class="ic">🎤</div><h3>Stage Confidence</h3><p>Students present, converse and perform in front of their peers.</p></div>
+  <div class="pillar reveal"><div class="ic">🤖</div><h3>AI-Ready</h3><p>Bringing safe, guided AI learning tools to students and parents.</p></div>
+</div></div></section>
+
+<section class="about" id="about"><div class="wrap">
+  <div class="about-media reveal">
+    <img src="assets/stage-15.jpg" alt="Two students speaking on the school stage">
+    <img class="small" src="assets/wotd-heritage.jpg" alt="Word of the Day: Heritage">
+  </div>
+  <div class="reveal">
+    <span class="eyebrow">About the school</span>
+    <h2>Where every child makes progress</h2>
+    <p class="lead">“Pragathi” means progress. At Sri Pragathi Vidyaniketan, progress is measured not only in marks, but in how confidently a child speaks, how kindly they treat others, and how curious they stay about the world.</p>
+    <div class="values">
+      <div><b>Values first</b><span>Tolerance, respect and heritage, taught every day</span></div>
+      <div><b>Bilingual clarity</b><span>Concepts explained in English and Telugu</span></div>
+      <div><b>Confident voices</b><span>Regular stage activities and conversations</span></div>
+      <div><b>Parents as partners</b><span>Daily updates shared with every family</span></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="academics" id="academics"><div class="wrap">
+  <span class="eyebrow">Academics</span>
+  <h2>A clear path from first letters to high school</h2>
+  <p class="lead">Each stage builds the habits, language and thinking skills for the next.</p>
+  <div class="cards">
+    <div class="card reveal"><div class="num">01</div><h3>Early Years</h3><p>Play-based learning that builds language, numbers and joy in school.</p>
+      <ul><li>Phonics & rhymes</li><li>Number sense</li><li>Art, music & movement</li></ul></div>
+    <div class="card reveal"><div class="num">02</div><h3>Primary</h3><p>Strong reading, writing and maths, with daily vocabulary and speaking practice.</p>
+      <ul><li>Word of the Day</li><li>Stage presentations</li><li>Science & environment</li></ul></div>
+    <div class="card reveal"><div class="num">03</div><h3>High School</h3><p>Focused preparation for board exams, alongside reasoning and digital skills.</p>
+      <ul><li>Board exam readiness</li><li>Concept-based teaching</li><li>AI & digital literacy</li></ul></div>
+  </div>
+</div></section>
+
+<section class="wotd" id="word"><div class="wrap">
+  <div class="head">
+    <div><span class="eyebrow">Word of the Day</span>
+      <h2>One new word a day, a brighter tomorrow</h2>
+      <p class="lead">Every morning students learn a word with its meaning, example, synonyms and antonyms, in English and Telugu.</p></div>
+  </div>
+  <div class="posters">
+    <button class="poster reveal" data-src="assets/wotd-heritage.jpg"><img src="assets/wotd-heritage.jpg" alt="Word of the Day: Heritage" loading="lazy"><span>Heritage</span></button>
+    <button class="poster reveal" data-src="assets/wotd-tolerance.jpg"><img src="assets/wotd-tolerance.jpg" alt="Word of the Day: Tolerance" loading="lazy"><span>Tolerance</span></button>
+    <button class="poster reveal" data-src="assets/wotd-prosperity.jpg"><img src="assets/wotd-prosperity.jpg" alt="Word of the Day: Prosperity" loading="lazy"><span>Prosperity</span></button>
+    <button class="poster reveal" data-src="assets/wotd-universal.jpg"><img src="assets/wotd-universal.jpg" alt="Word of the Day: Universal" loading="lazy"><span>Universal</span></button>
+  </div>
+  <div class="quiz reveal">
+    <div><span class="eyebrow" style="margin:0 0 .4rem">Try today's quiz</span>
+      <h3>Universal <span class="te">· విశ్వవ్యాప్త</span></h3>
+      <p>Which word is the <b>opposite</b> of “Universal”?</p></div>
+    <div class="opts">
+      <button class="opt" data-ok="0">Global</button>
+      <button class="opt" data-ok="1">Local</button>
+      <button class="opt" data-ok="0">Common</button>
+    </div>
+    <div class="quiz-msg" aria-live="polite"></div>
+  </div>
+</div></section>
+
+<section class="voice" id="voice"><div class="wrap">
+  <div class="video-box reveal">
+    <video controls preload="metadata" poster="assets/stage-100.jpg" playsinline>
+      <source src="assets/student-talk.mp4" type="video/mp4">
+    </video>
+  </div>
+  <div class="reveal">
+    <span class="eyebrow">Student voice</span>
+    <h2>Confidence you can hear</h2>
+    <p class="lead">Our students regularly take the stage to present and hold conversations in English. It is how shy beginners become confident speakers.</p>
+    <div class="quote">“Speaking in front of everyone is how we learn to believe in ourselves.”</div>
+    <a href="#admissions" class="btn btn-gold">Visit the school →</a>
+  </div>
+</div></section>
+
+<section class="ai" id="ai"><div class="wrap">
+  <span class="eyebrow">AI-ready learning · Coming soon</span>
+  <h2>The SPV School App</h2>
+  <p class="lead">A safe, school-controlled app that brings learning and school updates to every parent's phone.</p>
+  <div class="feat">
+    <div class="reveal"><div class="ic">🔐</div><h3>Parent login</h3><p>Sign in with your registered phone number and see only your own child's attendance, homework and notices.</p><span class="badge">Private & secure</span></div>
+    <div class="reveal"><div class="ic">📷</div><h3>Smart attendance</h3><p>Teachers scan the register; attendance updates for parents automatically.</p><span class="badge">Less paperwork</span></div>
+    <div class="reveal"><div class="ic">📚</div><h3>Chapter summaries</h3><p>Scan a chapter and the AI creates easy summaries and quizzes for revision at home.</p><span class="badge">English & Telugu</span></div>
+    <div class="reveal"><div class="ic">💬</div><h3>Ask SPV assistant</h3><p>Answers parents' questions on timings, fees and admissions any time, from school-approved information.</p><span class="badge">24 × 7</span></div>
+    <div class="reveal"><div class="ic">✨</div><h3>Word of the Day+</h3><p>Every daily word with quizzes and pronunciation practice, so learning continues at home.</p><span class="badge">Daily practice</span></div>
+    <div class="reveal"><div class="ic">🛠️</div><h3>Easy admin</h3><p>School staff post notices, homework and photos themselves in a few clicks.</p><span class="badge">No technical skills</span></div>
+  </div>
+</div></section>
+
+<section class="gallery"><div class="wrap">
+  <span class="eyebrow">Life at SPV</span>
+  <h2>Moments from our school</h2>
+  <div class="gallery-grid reveal">
+    <img src="assets/stage-60.jpg" alt="Students on stage">
+    <img src="assets/stage-40.jpg" alt="Student presentation">
+    <img src="assets/stage-80.jpg" alt="Students in conversation">
+    <img src="assets/wotd-universal.jpg" alt="Word of the Day: Universal" style="object-position:top">
+    <img src="assets/stage-15.jpg" alt="Student speakers">
+  </div>
+</div></section>
+
+<section class="adm" id="admissions"><div class="wrap">
+  <div class="reveal">
+    <span class="eyebrow">Admissions</span>
+    <h2>Join the Sri Pragathi family</h2>
+    <p class="lead">We welcome families who want a caring, confident and future-ready education for their children.</p>
+    <ol class="steps">
+      <li><div><b>Send an enquiry</b><span>Fill in the form, or visit the school office.</span></div></li>
+      <li><div><b>Campus visit</b><span>Meet our teachers and see our classrooms.</span></div></li>
+      <li><div><b>Interaction</b><span>A friendly conversation with your child.</span></div></li>
+      <li><div><b>Confirm admission</b><span>Complete documents and fee formalities.</span></div></li>
+    </ol>
+  </div>
+  <form class="reveal" id="enq">
+    <h3>Admission enquiry</h3>
+    <div class="row">
+      <label>Parent name<input required name="parent" autocomplete="name"></label>
+      <label>Phone number<input required name="phone" type="tel" pattern="[0-9+ ]{10,14}" autocomplete="tel"></label>
+    </div>
+    <div class="row">
+      <label>Child's name<input required name="child"></label>
+      <label>Class applying for<select name="class" required>
+        <option value="">Select</option><option>Nursery / LKG / UKG</option><option>Class 1 – 5</option><option>Class 6 – 8</option><option>Class 9 – 10</option></select></label>
+    </div>
+    <label>Message (optional)<textarea name="msg" rows="3"></textarea></label>
+    <button class="btn btn-gold" type="submit">Send enquiry</button>
+    <div class="form-ok" role="status">Thank you! The school office will call you shortly.</div>
+  </form>
+</div></section>
+
+<section class="contact" id="contact"><div class="wrap">
+  <div class="addr reveal">
+    <h3>Visit us</h3>
+    <p><b>Sri Pragathi Vidyaniketan EM High School</b><br>Kota, Andhra Pradesh<br>PIN 524411</p>
+    <p>Our office is happy to answer your questions and arrange a campus visit.</p>
+    <a class="btn btn-gold" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Sri+Pragathi+Vidyaniketan+EM+High+School+Kota+524411">Get directions →</a>
+  </div>
+  <div class="map reveal">
+    <iframe title="Map of Kota, Andhra Pradesh 524411" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+      src="https://maps.google.com/maps?q=Kota,+Andhra+Pradesh+524411&z=14&output=embed"></iframe>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="brand"><img src="assets/logo.png" alt=""><div><strong>Sri Pragathi Vidyaniketan</strong><small>EM High School · Kota 524411</small></div></div>
+  <div>© <span id="yr"></span> Sri Pragathi Vidyaniketan EM High School. All rights reserved.<br><span class="credit">Website & AI app by Rajendra Chevuru</span></div>
+</div></footer>
+
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Poster preview"><button aria-label="Close">×</button><img alt=""></div>
+
+<script>
+document.getElementById('yr').textContent=new Date().getFullYear();
+// reveal on scroll
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+// close mobile menu on link click
+document.querySelectorAll('.links a').forEach(a=>a.addEventListener('click',()=>document.querySelector('.links').classList.remove('open')));
+// lightbox
+const lb=document.getElementById('lb'), lbImg=lb.querySelector('img');
+document.querySelectorAll('.poster').forEach(p=>p.addEventListener('click',()=>{lbImg.src=p.dataset.src;lbImg.alt=p.querySelector('img').alt;lb.classList.add('open')}));
+lb.addEventListener('click',e=>{if(e.target!==lbImg)lb.classList.remove('open')});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')lb.classList.remove('open')});
+// quiz
+const msg=document.querySelector('.quiz-msg');
+document.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.opt').forEach(o=>o.classList.remove('right','wrong'));
+  if(b.dataset.ok==='1'){b.classList.add('right');msg.textContent='Correct! “Local” is the opposite of “Universal”. 🎉'}
+  else{b.classList.add('wrong');msg.textContent='Not quite. Hint: think of something limited to one place.'}
+}));
+// enquiry form (front-end only for now)
+document.getElementById('enq').addEventListener('submit',e=>{e.preventDefault();e.target.querySelector('.form-ok').style.display='block';e.target.reset()});
+</script>
+</body>
+</html>
