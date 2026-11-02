@@ -24,14 +24,10 @@ Agent = Model (free local model via Ollama) + Harness (prompt, tools, loop). No 
    ```bash
    ollama pull qwen2.5:3b      # about 2 GB, supports tool calling; runs on 8 GB RAM
    ```
-2. Start the agent:
-   ```bash
+2. Start the agent (installs everything on the first run):
+   ```powershell
    cd agent
-   python -m venv .venv
-   .venv\Scripts\activate          # Mac/Linux: source .venv/bin/activate
-   pip install -r requirements.txt
-   copy .env.example .env          # Mac/Linux: cp .env.example .env
-   uvicorn main:app --port 8000
+   .\start.bat            # Mac/Linux: bash start.sh
    ```
 3. Open http://localhost:8000
 
