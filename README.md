@@ -21,3 +21,14 @@ To switch on the AI model, add these in Vercel → Project → Settings → Envi
 
 Admission enquiries are not stored on Vercel (no durable disk); the agent points parents to the enquiry form.
 School content to fill in: `agent/data/school.json` (contact, timings, fees, transport, uniform, calendar, safety) and `agent/data/notices.json`.
+
+## SPV School App (installable, /app)
+`app/` is a separate installable mobile app (PWA) at `/app/`, with the Ask SPV agent for six roles:
+student, parent, teacher, office staff, admin and correspondent.
+
+- Open `https://<site>/app/` on a phone → browser menu → **Add to Home screen** (iPhone: Share → Add to Home Screen).
+- `agent/app_agent.py`: role-based agent. Each role gets its own system prompt and only its own tools
+  (e.g. parents: own child's summary; teachers: attendance and notice drafts; correspondent: whole-school dashboard).
+- `agent/app_api.py`: `POST /api/app/chat {role, message, history}` and `GET /api/app/home?role=`.
+- `agent/data/demo.json`: **demo data only** (fictional names and numbers). Attendance marking and notices are drafts
+  and are not saved yet. Real login (parent phone number + OTP) and the school database come next.

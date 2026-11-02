@@ -1,6 +1,36 @@
 {
   "functions": {
-    "api/index.py": { "includeFiles": "agent/{agent.py,data/**}", "maxDuration": 30 }
+    "api/index.py": {
+      "includeFiles": "agent/{agent.py,app_agent.py,app_api.py,data/**}",
+      "maxDuration": 30
+    }
   },
-  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }]
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/app",
+      "destination": "/app/",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/app/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/app/"
+        }
+      ]
+    }
+  ]
 }

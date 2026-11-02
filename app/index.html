@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SPV School App</title>
+<meta name="description" content="Sri Pragathi Vidyaniketan school app with the Ask SPV AI assistant.">
+<meta name="theme-color" content="#16204a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SPV App">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#16204a;--navy-2:#222d63;--gold:#f2a900;--gold-soft:#fff4d6;--ink:#1b2340;--muted:#5b6582;--line:#e4e8f2;--bg:#f5f7fc;--card:#fff;--green:#2e8b57}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Inter,'Noto Sans Telugu',system-ui,sans-serif;color:var(--ink);background:var(--navy);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+.app{max-width:520px;height:100dvh;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+.te{font-family:'Noto Sans Telugu',sans-serif}
+
+/* role picker */
+#pick{flex:1;overflow-y:auto;background:linear-gradient(170deg,var(--navy) 0%,var(--navy-2) 60%,#2b3775 100%);color:#fff;padding:calc(28px + env(safe-area-inset-top)) 20px 28px}
+.hello{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.hello img{width:64px;height:64px;background:#fff;border-radius:50%;padding:3px}
+.hello h1{font-family:Fraunces,serif;font-size:1.5rem;line-height:1.1}
+.hello p{color:#c9d1ec;font-size:.85rem}
+#pick h2{font-size:1rem;font-weight:600;margin-bottom:12px}
+.roles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.role{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:16px 14px;text-align:left;transition:transform .15s,background .15s}
+.role:active{transform:scale(.97)}.role:hover{background:rgba(255,255,255,.14)}
+.role .i{font-size:1.7rem;display:block;margin-bottom:8px}
+.role b{display:block;font-size:1rem}.role small{color:#c9d1ec;font-size:.8rem}
+.demo-note{margin-top:20px;font-size:.78rem;color:#aeb8dc;line-height:1.5}
+.install{margin-top:18px;width:100%;background:var(--gold);color:var(--navy);font-weight:700;border-radius:999px;padding:13px;display:none}
+.ios-tip{display:none;margin-top:14px;font-size:.8rem;color:#dfe4f5;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}
+
+/* main shell */
+#main{flex:1;display:none;flex-direction:column;min-height:0}
+.top{background:var(--navy);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:12px}
+.top img{width:40px;height:40px;background:#fff;border-radius:50%;padding:2px}
+.top b{display:block;font-family:Fraunces,serif;font-size:1.08rem;line-height:1.1}
+.top span{font-size:.76rem;color:#c9d1ec}
+.top .sw{margin-left:auto;font-size:.78rem;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 11px}
+.view{flex:1;overflow-y:auto;display:none;min-height:0}
+.view.on{display:flex;flex-direction:column}
+.pad{padding:16px}
+.badge{display:inline-block;background:var(--gold-soft);color:#8a5a00;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 9px}
+.greet{font-family:Fraunces,serif;font-size:1.35rem;color:var(--navy);margin:8px 0 14px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+.card small{display:block;color:var(--muted);font-size:.72rem;margin-bottom:4px}
+.card b{font-size:1.05rem;color:var(--navy);word-break:break-word}
+.sec{font-weight:700;font-size:.92rem;color:var(--navy);margin:6px 0 10px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.act{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;font-size:.86rem;font-weight:600;color:var(--navy)}
+.act:active{background:var(--gold-soft)}
+.word{background:var(--navy);color:#fff;border-radius:18px;padding:16px;margin-bottom:18px}
+.word small{color:var(--gold);font-weight:700;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
+.word h3{font-family:Fraunces,serif;font-size:1.5rem;margin:4px 0}
+.word p{color:#d3d9ef;font-size:.88rem}
+.notice{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.notice small{color:var(--muted);font-size:.74rem}.notice b{display:block;color:var(--navy);margin:2px 0}
+.notice p{font-size:.88rem;color:var(--ink)}
+
+/* chat */
+.log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:9px}
+.msg{max-width:86%;padding:10px 13px;border-radius:16px;font-size:.92rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.me{background:var(--gold);color:var(--navy);align-self:flex-end;border-bottom-right-radius:4px}
+.wait{color:var(--muted);font-style:italic}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;border-top:1px solid var(--line);background:#fff;scrollbar-width:none}
+.chips button{flex:none;border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.8rem;color:var(--navy);background:#fff}
+form{display:flex;gap:8px;padding:8px 16px 12px;background:#fff}
+textarea{flex:1;min-width:0;resize:none;height:44px;max-height:120px;padding:11px 14px;border:1.5px solid var(--line);border-radius:22px;font:400 .93rem Inter,'Noto Sans Telugu',sans-serif}
+textarea:focus{outline:none;border-color:var(--gold)}
+form button{background:var(--navy);color:#fff;border-radius:999px;padding:0 18px;font-weight:600}
+form button:disabled{opacity:.5}
+
+/* bottom nav */
+nav{display:none;background:#fff;border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;font-size:.72rem;color:var(--muted);border-radius:12px}
+nav button .i{font-size:1.25rem}
+nav button.on{color:var(--navy);font-weight:700;background:var(--bg)}
+</style>
+</head>
+<body>
+<div class="app">
+  <section id="pick">
+    <div class="hello"><img src="icons/icon-192.png" alt=""><div><h1>SPV School App</h1><p>Sri Pragathi Vidyaniketan EM High School · Kota</p></div></div>
+    <h2>Who is using the app? <span class="te" style="color:#c9d1ec;font-weight:500">· మీరు ఎవరు?</span></h2>
+    <div class="roles" id="roles"></div>
+    <button class="install" id="installBtn">📲 Install on this phone</button>
+    <div class="ios-tip" id="iosTip">On iPhone: tap <b>Share</b> → <b>Add to Home Screen</b> to install.</div>
+    <p class="demo-note">Demo version: names and numbers are sample data. Secure login with the parent's registered phone number comes when the school database is connected.</p>
+  </section>
+
+  <section id="main">
+    <header class="top"><img src="icons/icon-192.png" alt=""><div><b id="roleTitle">SPV App</b><span id="roleSub"></span></div><button class="sw" id="switchBtn">Switch role</button></header>
+
+    <div class="view on" id="v-home"><div class="pad" id="homeBody"><p class="wait">Loading…</p></div></div>
+
+    <div class="view" id="v-ask">
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="chips" id="chips"></div>
+      <form id="f"><textarea id="q" rows="1" placeholder="Ask in English or తెలుగు…" maxlength="4000"></textarea><button id="send">Send</button></form>
+    </div>
+
+    <div class="view" id="v-notices"><div class="pad" id="noticeBody"></div></div>
+  </section>
+
+  <nav id="nav">
+    <button data-v="home" class="on"><span class="i">🏠</span>Home</button>
+    <button data-v="ask"><span class="i">💬</span>Ask SPV</button>
+    <button data-v="notices"><span class="i">📢</span>Notices</button>
+  </nav>
+</div>
+
+<script>
+const ROLES={
+  student:{i:'🎒',name:'Student',te:'విద్యార్థి',hi:'Ready to learn today?',
+    chips:["My timetable","Homework","Quiz me on today's word","Summarise a chapter: "]},
+  parent:{i:'👨‍👩‍👧',name:'Parent',te:'తల్లిదండ్రులు',hi:"Your child's day at a glance",
+    chips:["How is my child doing?","Homework today","Fee status","Latest notices","నా బిడ్డ హాజరు?"]},
+  teacher:{i:'🧑‍🏫',name:'Teacher',te:'ఉపాధ్యాయులు',hi:'Your classes today',
+    chips:["My periods today","Mark attendance: absent 3, 5","notice: ","Quiz on today's word"]},
+  staff:{i:'🗂️',name:'Office staff',te:'సిబ్బంది',hi:'Office tasks today',
+    chips:["Pending enquiries","Fee reminders","Visitors today","Latest notices"]},
+  admin:{i:'🛠️',name:'Admin',te:'అడ్మిన్',hi:'Manage the school app',
+    chips:["Users overview","Pending approvals","notice: ","Latest notices"]},
+  correspondent:{i:'🏛️',name:'Correspondent',te:'కరస్పాండెంట్',hi:'Your school today',
+    chips:["Today's overview","Fee collection","Admissions this month","App users"]}
+};
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
+let role=null, history=[], busy=false, homeData=null;
+
+// role picker
+Object.entries(ROLES).forEach(([k,r])=>{
+  const b=document.createElement('button');b.className='role';
+  b.innerHTML=`<span class="i">${r.i}</span><b>${r.name}</b><small class="te">${r.te}</small>`;
+  b.onclick=()=>enter(k);$('roles').appendChild(b);
+});
+
+function enter(k){
+  role=k;store.set('spv-role',k);history=[];
+  const r=ROLES[k];$('roleTitle').textContent=`${r.i} ${r.name}`;$('roleSub').textContent='Sri Pragathi Vidyaniketan · '+r.te;
+  $('pick').style.display='none';$('main').style.display='flex';$('nav').style.display='flex';
+  $('log').innerHTML='';addMsg(`Namaste! 🙏 I am Ask SPV. I can help you as ${r.name.toLowerCase()}. Try a suggestion below.`,'bot');
+  $('chips').innerHTML='';r.chips.forEach(c=>{const b=document.createElement('button');b.type='button';b.textContent=c.endsWith(': ')?(c==='notice: '?'Draft a notice…':c.slice(0,-2)+'…'):c;b.onclick=()=>chip(c);$('chips').appendChild(b)});
+  show('home');loadHome();
+}
+$('switchBtn').onclick=()=>{store.del('spv-role');$('main').style.display='none';$('nav').style.display='none';$('pick').style.display='block'};
+
+// tabs
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+function show(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));if(v==='ask')$('q').focus()}
+
+// home
+async function loadHome(){
+  const r=ROLES[role];
+  try{const res=await fetch('/api/app/home?role='+role);if(!res.ok)throw 0;homeData=await res.json()}
+  catch{$('homeBody').innerHTML='<p class="wait">Could not load. Check your internet and try again.</p>';return}
+  const d=homeData, el=$('homeBody');el.innerHTML='';
+  el.insertAdjacentHTML('beforeend',`<span class="badge">Demo data</span><h2 class="greet"></h2><div class="cards"></div><div class="sec">Quick actions</div><div class="actions"></div>`);
+  el.querySelector('.greet').textContent=r.hi;
+  d.cards.forEach(c=>{const x=document.createElement('div');x.className='card';x.innerHTML='<small></small><b></b>';x.children[0].textContent=c.label;x.children[1].textContent=c.value;el.querySelector('.cards').appendChild(x)});
+  r.chips.slice(0,4).forEach(c=>{const b=document.createElement('button');b.className='act';b.textContent=c.endsWith(': ')?(c==='notice: '?'📝 Draft a notice':'📖 '+c.slice(0,-2)):c;b.onclick=()=>chip(c);el.querySelector('.actions').appendChild(b)});
+  const w=document.createElement('div');w.className='word';w.innerHTML='<small>Word of the Day</small><h3></h3><p></p>';
+  w.querySelector('h3').textContent=`${d.word.word} · ${d.word.telugu}`;w.querySelector('p').textContent=d.word.meaning;el.appendChild(w);
+  const nb=$('noticeBody');nb.innerHTML='<div class="sec">School notices</div>';
+  d.notices.forEach(n=>{const x=document.createElement('div');x.className='notice';x.innerHTML='<small></small><b></b><p></p>';
+    x.children[0].textContent=n.date;x.children[1].textContent=n.title;x.children[2].textContent=n.text||'';nb.appendChild(x)});
+}
+
+// chat
+function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;$('log').appendChild(d);$('log').scrollTop=$('log').scrollHeight;return d}
+function chip(c){show('ask');if(c.endsWith(': ')){$('q').value=c==='notice: '?'notice: ':'';$('q').placeholder=c==='notice: '?'notice: title. details…':'Paste the chapter text here…';$('q').focus()}else send(c)}
+async function send(text){
+  const message=(text??$('q').value).trim();if(!message||busy)return;
+  $('q').value='';$('q').style.height='';busy=true;$('send').disabled=true;addMsg(message,'me');const w=addMsg('Thinking…','bot wait');
+  try{const res=await fetch('/api/app/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,message,history:history.slice(-10)})});
+    if(!res.ok)throw 0;const {reply}=await res.json();w.remove();addMsg(reply,'bot');
+    history.push({role:'user',content:message},{role:'assistant',content:reply});
+  }catch{w.remove();addMsg('Sorry, I could not connect. Please check your internet and try again.','bot')}
+  busy=false;$('send').disabled=false;
+}
+$('f').onsubmit=e=>{e.preventDefault();send()};
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
+$('q').addEventListener('input',e=>{e.target.style.height='';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'});
+
+// install (Android/desktop prompt, iOS hint)
+let deferred=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('installBtn').style.display='block'});
+$('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('installBtn').style.display='none'};
+const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
+if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!standalone)$('iosTip').style.display='block';
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js',{scope:'/app/'}).catch(()=>{});
+
+// remember last role
+const saved=store.get('spv-role');if(saved&&ROLES[saved])enter(saved);
+</script>
+</body>
+</html>

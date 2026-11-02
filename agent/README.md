@@ -41,3 +41,6 @@ Check quality with `python evals.py`.
 
 ## Online (Vercel)
 The same agent is deployed with the website through `../api/index.py`. See the root README for the environment variables.
+
+## SPV School App (roles)
+`app_agent.py` + `app_api.py` power the installable app in `../app/`. Locally, `main.py` serves it at http://localhost:8000/app.

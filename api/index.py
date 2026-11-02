@@ -8,8 +8,10 @@ from fastapi import FastAPI  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from agent import PROVIDER, chat  # noqa: E402
+from app_api import router as app_router  # noqa: E402
 
 app = FastAPI(title="Ask SPV")
+app.include_router(app_router)  # SPV School App: /api/app/chat, /api/app/home
 
 
 class ChatIn(BaseModel):

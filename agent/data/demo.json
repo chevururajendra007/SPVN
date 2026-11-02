@@ -1,0 +1,37 @@
+{
+  "_note": "DEMO DATA ONLY. Fictional people and numbers to show the app. Replace with the school database before real use.",
+  "student": {
+    "name": "Demo Student", "class": "Class 5-A", "roll": 12, "attendance_pct": 94,
+    "timetable_today": ["English", "Maths", "Telugu", "Science", "Lunch", "Social", "Word of the Day + Stage time", "Games"],
+    "homework": [
+      {"subject": "Maths", "task": "Exercise 4.2, sums 1 to 10", "due": "Tomorrow"},
+      {"subject": "English", "task": "Write 5 sentences using today's Word of the Day", "due": "Tomorrow"},
+      {"subject": "Science", "task": "Draw the parts of a plant", "due": "Friday"}
+    ],
+    "tests": [{"subject": "Maths", "topic": "Fractions", "date": "Next Monday"}]
+  },
+  "parent": {
+    "child": "Demo Student", "class": "Class 5-A", "class_teacher": "Demo Teacher",
+    "attendance": "Present today. 94% this term (2 days absent).",
+    "fees": "Term 1: Paid. Term 2: Due by 15 December.",
+    "remark": "Speaks confidently on stage. Needs more practice with fractions."
+  },
+  "teacher": {
+    "name": "Demo Teacher", "subject": "Maths", "class_teacher_of": "Class 5-A",
+    "periods_today": ["Class 5-A Maths (P2)", "Class 6-B Maths (P4)", "Class 7-A Maths (P6)"],
+    "class_list": {"Class 5-A": ["1 Anil", "2 Bhavya", "3 Charan", "4 Divya", "5 Eswar", "12 Demo Student"]}
+  },
+  "staff": {
+    "pending_enquiries": [
+      {"parent": "Demo Parent A", "class": "UKG", "since": "Yesterday"},
+      {"parent": "Demo Parent B", "class": "Class 3", "since": "Today"}
+    ],
+    "fee_reminders_due": 18, "visitors_today": 4
+  },
+  "admin": {"users": {"students": 412, "parents": 398, "teachers": 22, "staff": 9}, "pending_approvals": 3},
+  "correspondent": {
+    "strength": 412, "attendance_today_pct": 91, "staff_present": "29 of 31",
+    "fee_collection_pct": 72, "enquiries_this_month": 14, "admissions_this_month": 6,
+    "highlight": "Word of the Day streak: 21 days. Stage activity held in 4 classes this week."
+  }
+}
