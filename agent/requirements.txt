@@ -1,5 +1,8 @@
-langchain-azure-ai
+langchain-ollama
+langchain-core
 fastapi
 uvicorn
 httpx
 python-dotenv
+# optional, only for LLM_PROVIDER=azure:
+# langchain-azure-ai

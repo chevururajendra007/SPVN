@@ -87,29 +87,69 @@ def save_admission_enquiry(parent_name: str, phone: str, child_name: str, class_
     return f"Saved enquiry #{cur.lastrowid}. The school office will call {digits}."
 
 
+# ---------------------------------------------------------------- offline backup
+WORD_TRIGGERS = ("word", "quiz", "vocabulary", "meaning", "synonym", "antonym", "పదం")
+
+
+def offline_answer(message: str) -> str:
+    """No-model backup: routes the question straight to the tools.
+    Used when the local model is not running, so the demo never breaks."""
+    q = message.lower()
+    named = next((w["word"] for w in WORDS if w["word"].lower() in q), "")
+    if named or any(t in q for t in WORD_TRIGGERS):
+        w = json.loads(get_word_of_the_day(named))
+        return (f"Word of the Day: {w['word']} ({w['telugu']})\n"
+                f"Meaning: {w['meaning']}\nExample: {w['example']}\n"
+                f"Synonyms: {', '.join(w['synonyms'])}\nAntonyms: {', '.join(w['antonyms'])}")
+    if any(k in q for k in ("marks", "attendance", "result")):
+        return "For your child's marks and attendance, parent login is coming soon in the SPV app."
+    info = get_school_info(message)
+    return re.sub(r"^\[\w+\] ", "", info, flags=re.M)
+
+
 # ---------------------------------------------------------------- model + loop
+PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()  # ollama | azure | offline
 _llm = None
 
 
 def get_llm():
-    """Azure AI Foundry model with the tools bound (created once)."""
+    """The model with the tools bound (created once). Default: local Ollama."""
     global _llm
     if _llm is None:
-        from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel
         from langchain_core.tools import tool
 
         tools = [tool(f) for f in (get_school_info, get_word_of_the_day, save_admission_enquiry)]
-        model = AzureAIChatCompletionsModel(
-            endpoint=os.environ["AZURE_INFERENCE_ENDPOINT"],
-            credential=os.environ["AZURE_INFERENCE_CREDENTIAL"],
-            model=os.environ["AZURE_MODEL_DEPLOYMENT"],
-            temperature=0.2,
-        )
+        if PROVIDER == "azure":
+            from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel
+            model = AzureAIChatCompletionsModel(
+                endpoint=os.environ["AZURE_INFERENCE_ENDPOINT"],
+                credential=os.environ["AZURE_INFERENCE_CREDENTIAL"],
+                model=os.environ["AZURE_MODEL_DEPLOYMENT"],
+                temperature=0.2,
+            )
+        else:
+            from langchain_ollama import ChatOllama
+            model = ChatOllama(
+                model=os.getenv("OLLAMA_MODEL", "qwen2.5:3b"),
+                base_url=os.getenv("OLLAMA_URL", "http://localhost:11434"),
+                temperature=0.2,
+            )
         _llm = (model.bind_tools(tools), {t.name: t for t in tools})
     return _llm
 
 
 def chat(message: str, history: list[dict] | None = None, llm=None) -> str:
+    """Run the agent; fall back to the offline router if the model is unavailable."""
+    if PROVIDER == "offline" and llm is None:
+        return offline_answer(message)
+    try:
+        return _agent_loop(message, history, llm)
+    except Exception as e:  # model not running / not installed
+        print(f"[ask-spv] model unavailable ({type(e).__name__}: {e}); using offline answer")
+        return offline_answer(message)
+
+
+def _agent_loop(message: str, history: list[dict] | None = None, llm=None) -> str:
     """The agent loop: model -> tool calls -> model ... until a final answer."""
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 
