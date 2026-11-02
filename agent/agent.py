@@ -129,10 +129,12 @@ def get_llm():
             )
         else:
             from langchain_ollama import ChatOllama
+            key = os.getenv("OLLAMA_API_KEY", "").strip()  # only needed for Ollama Cloud
             model = ChatOllama(
                 model=os.getenv("OLLAMA_MODEL", "qwen2.5:3b"),
-                base_url=os.getenv("OLLAMA_URL", "http://localhost:11434"),
+                base_url=os.getenv("OLLAMA_URL", "http://127.0.0.1:11434"),
                 temperature=0.2,
+                client_kwargs={"headers": {"Authorization": f"Bearer {key}"}} if key else {},
             )
         _llm = (model.bind_tools(tools), {t.name: t for t in tools})
     return _llm
