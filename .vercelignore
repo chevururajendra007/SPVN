@@ -1,1 +1,8 @@
-agent
+agent/frontend
+agent/web
+agent/start.sh
+agent/start.bat
+agent/evals.py
+agent/main.py
+agent/.env
+agent/*.db

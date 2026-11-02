@@ -1,0 +1,6 @@
+{
+  "functions": {
+    "api/index.py": { "includeFiles": "agent/{agent.py,data/**}", "maxDuration": 30 }
+  },
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }]
+}

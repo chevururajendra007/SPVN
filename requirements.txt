@@ -1,0 +1,6 @@
+# Vercel installs these for api/index.py (the website itself needs nothing)
+fastapi
+python-dotenv
+langchain-core
+langchain-ollama
+# for LLM_PROVIDER=azure on Vercel, add: langchain-azure-ai

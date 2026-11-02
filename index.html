@@ -195,6 +195,34 @@ footer .brand strong{color:#fff}
   .topbar .wrap{justify-content:center;text-align:center}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.reveal{opacity:1;transform:none}}
+
+/* Ask SPV chat widget */
+.spv-fab{position:fixed;right:20px;bottom:20px;z-index:90;display:flex;align-items:center;gap:.55rem;background:var(--navy);color:#fff;border:0;border-radius:999px;padding:.8rem 1.15rem .8rem .8rem;font:600 .95rem Inter,sans-serif;box-shadow:var(--shadow);cursor:pointer;transition:transform .2s}
+.spv-fab:hover{transform:translateY(-2px)}
+.spv-fab img{width:30px;height:30px;background:#fff;border-radius:50%;padding:2px}
+.spv-fab .dot{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25)}
+.spv-panel{position:fixed;right:20px;bottom:88px;z-index:91;width:min(380px,calc(100vw - 32px));height:min(560px,calc(100dvh - 120px));background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 30px 60px -20px rgba(22,32,74,.45);display:none;flex-direction:column;overflow:hidden}
+.spv-panel.open{display:flex}
+.spv-head{display:flex;align-items:center;gap:.7rem;padding:.85rem 1rem;background:var(--navy);color:#fff}
+.spv-head img{width:38px;height:38px;background:#fff;border-radius:50%;padding:2px}
+.spv-head b{display:block;font-family:Fraunces,serif;font-size:1.05rem}
+.spv-head span{font-size:.75rem;color:#c9d1ec}
+.spv-head button{margin-left:auto;background:none;border:0;color:#fff;font-size:1.5rem;cursor:pointer;line-height:1}
+.spv-log{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.55rem;background:var(--bg-2)}
+.spv-msg{max-width:85%;padding:.6rem .85rem;border-radius:14px;font-size:.9rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.spv-msg.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.spv-msg.me{background:var(--gold);color:var(--navy);align-self:flex-end;border-bottom-right-radius:4px}
+.spv-msg.wait{color:var(--muted);font-style:italic}
+.spv-chips{display:flex;gap:.45rem;overflow-x:auto;padding:.6rem 1rem;border-top:1px solid var(--line)}
+.spv-chips button{flex:none;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:.35rem .75rem;font:500 .8rem Inter,'Noto Sans Telugu',sans-serif;color:var(--navy);cursor:pointer}
+.spv-chips button:hover{border-color:var(--gold)}
+.spv-form{display:flex;gap:.5rem;padding:.7rem 1rem 1rem}
+.spv-form input{flex:1;min-width:0;padding:.7rem .95rem;border:1.5px solid var(--line);border-radius:999px;font:400 .92rem Inter,'Noto Sans Telugu',sans-serif}
+.spv-form input:focus{outline:none;border-color:var(--gold)}
+.spv-form button{background:var(--navy);color:#fff;border:0;border-radius:999px;padding:0 1.1rem;font:600 .9rem Inter,sans-serif;cursor:pointer}
+.spv-form button:disabled{opacity:.5}
+.spv-note{font-size:.7rem;color:var(--muted);text-align:center;padding:0 1rem .6rem}
+@media(max-width:520px){.spv-fab span.t{display:none}.spv-fab{padding:.7rem}.spv-panel{right:16px;bottom:80px}}
 </style>
 </head>
 <body>
@@ -318,7 +346,7 @@ footer .brand strong{color:#fff}
     <div class="reveal"><div class="ic">🔐</div><h3>Parent login</h3><p>Sign in with your registered phone number and see only your own child's attendance, homework and notices.</p><span class="badge">Private & secure</span></div>
     <div class="reveal"><div class="ic">📷</div><h3>Smart attendance</h3><p>Teachers scan the register; attendance updates for parents automatically.</p><span class="badge">Less paperwork</span></div>
     <div class="reveal"><div class="ic">📚</div><h3>Chapter summaries</h3><p>Scan a chapter and the AI creates easy summaries and quizzes for revision at home.</p><span class="badge">English & Telugu</span></div>
-    <div class="reveal"><div class="ic">💬</div><h3>Ask SPV assistant</h3><p>Answers parents' questions on timings, fees and admissions any time, from school-approved information.</p><span class="badge">24 × 7</span></div>
+    <div class="reveal"><div class="ic">💬</div><h3>Ask SPV assistant</h3><p>Answers parents' questions on timings, fees and admissions any time, from school-approved information.</p><span class="badge">Live now · 24 × 7</span> <a href="#" data-open-spv style="display:block;margin-top:.6rem;font-weight:600;color:var(--navy)">Try Ask SPV →</a></div>
     <div class="reveal"><div class="ic">✨</div><h3>Word of the Day+</h3><p>Every daily word with quizzes and pronunciation practice, so learning continues at home.</p><span class="badge">Daily practice</span></div>
     <div class="reveal"><div class="ic">🛠️</div><h3>Easy admin</h3><p>School staff post notices, homework and photos themselves in a few clicks.</p><span class="badge">No technical skills</span></div>
   </div>
@@ -385,6 +413,15 @@ footer .brand strong{color:#fff}
 
 <div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Poster preview"><button aria-label="Close">×</button><img alt=""></div>
 
+<button class="spv-fab" id="spvFab" aria-controls="spvPanel" aria-expanded="false"><img src="assets/logo.png" alt=""><span class="t">Ask SPV</span><span class="dot" aria-hidden="true"></span></button>
+<div class="spv-panel" id="spvPanel" role="dialog" aria-label="Ask SPV assistant">
+  <div class="spv-head"><img src="assets/logo.png" alt=""><div><b>Ask SPV</b><span>AI assistant · English &amp; తెలుగు</span></div><button id="spvClose" aria-label="Close chat">×</button></div>
+  <div class="spv-log" id="spvLog" aria-live="polite"></div>
+  <div class="spv-chips" id="spvChips"></div>
+  <form class="spv-form" id="spvForm"><input id="spvQ" placeholder="Ask in English or తెలుగు…" autocomplete="off" maxlength="1000"><button id="spvSend">Send</button></form>
+  <div class="spv-note">Answers come only from school-approved information.</div>
+</div>
+
 <script>
 document.getElementById('yr').textContent=new Date().getFullYear();
 // reveal on scroll
@@ -406,6 +443,31 @@ document.querySelectorAll('.opt').forEach(b=>b.addEventListener('click',()=>{
 }));
 // enquiry form (front-end only for now)
 document.getElementById('enq').addEventListener('submit',e=>{e.preventDefault();e.target.querySelector('.form-ok').style.display='block';e.target.reset()});
+
+// Ask SPV chat widget -> POST /api/chat (agent on Vercel)
+(()=>{
+  const fab=document.getElementById('spvFab'), panel=document.getElementById('spvPanel'), log=document.getElementById('spvLog'),
+        q=document.getElementById('spvQ'), btn=document.getElementById('spvSend'), hist=[]; let busy=false, greeted=false;
+  const add=(text,cls)=>{const d=document.createElement('div');d.className='spv-msg '+cls;d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return d};
+  const toggle=open=>{panel.classList.toggle('open',open);fab.setAttribute('aria-expanded',open);
+    if(open&&!greeted){greeted=true;add('Namaste! 🙏 I am Ask SPV. Ask me about admissions, the school, notices or our Word of the Day.','bot')}
+    if(open)q.focus()};
+  fab.onclick=()=>toggle(!panel.classList.contains('open'));
+  document.getElementById('spvClose').onclick=()=>toggle(false);
+  document.querySelectorAll('[data-open-spv]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();toggle(true)}));
+  ["Today's Word of the Day","How do admissions work?","Latest notices","Where is the school?","స్కూల్ ఫీజు ఎంత?"].forEach(t=>{
+    const b=document.createElement('button');b.type='button';b.textContent=t;b.onclick=()=>send(t);document.getElementById('spvChips').appendChild(b)});
+  async function send(text){
+    const message=(text??q.value).trim(); if(!message||busy) return;
+    q.value='';busy=true;btn.disabled=true;add(message,'me');const w=add('Thinking…','bot wait');
+    try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message,history:hist.slice(-10)})});
+      if(!r.ok) throw 0; const {reply}=await r.json(); w.remove(); add(reply,'bot');
+      hist.push({role:'user',content:message},{role:'assistant',content:reply});
+    }catch{w.remove();add('Sorry, I could not connect right now. Please try again or contact the school office.','bot')}
+    busy=false;btn.disabled=false;q.focus()}
+  document.getElementById('spvForm').onsubmit=e=>{e.preventDefault();send()};
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&panel.classList.contains('open'))toggle(false)});
+})();
 </script>
 </body>
 </html>

@@ -132,5 +132,51 @@
       "parent portal"
     ],
     "text": "The SPV School App (coming soon) will offer parent login by registered phone number, smart attendance from scanned registers, AI chapter summaries and quizzes, this Ask SPV assistant, Word of the Day practice, and an easy admin panel for staff."
+  },
+  "transport": {
+    "keywords": [
+      "transport",
+      "bus",
+      "van",
+      "pickup",
+      "drop",
+      "route",
+      "బస్సు"
+    ],
+    "text": null
+  },
+  "uniform": {
+    "keywords": [
+      "uniform",
+      "dress",
+      "books",
+      "stationery",
+      "యూనిఫాం"
+    ],
+    "text": null
+  },
+  "calendar": {
+    "keywords": [
+      "calendar",
+      "exam",
+      "exams",
+      "term",
+      "vacation",
+      "ptm",
+      "parent teacher",
+      "పరీక్ష"
+    ],
+    "text": null
+  },
+  "safety": {
+    "keywords": [
+      "safety",
+      "safe",
+      "security",
+      "cctv",
+      "first aid",
+      "medical"
+    ],
+    "text": null
   }
 }

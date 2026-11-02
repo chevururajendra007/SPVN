@@ -12,11 +12,13 @@ Agent = Model (free local model via Ollama) + Harness (prompt, tools, loop). No 
 | `requirements.txt` | langchain-ollama, langchain-core, fastapi, uvicorn, httpx, python-dotenv |
 | `data/school.json` | School knowledge (RAG source). Fill in `null` values: contact, timings, fees. |
 | `data/words.json` | Word of the Day archive. Add a new entry each day. |
+| `data/notices.json` | Notices and announcements (newest first). |
 | `evals.py` | Known questions with assertions (incl. "never invent fees"). |
 
 ## Tools
 - `get_school_info(topic)`: returns only the matching slices of `school.json`
 - `get_word_of_the_day(word="")`: latest or a named word
+- `get_notices(limit=3)`: latest notices and announcements from `data/notices.json`
 - `save_admission_enquiry(...)`: validates the phone number, saves to `enquiries.db` (SQLite)
 
 ## Run locally (free, no API key)
@@ -36,3 +38,6 @@ Agent = Model (free local model via Ollama) + Harness (prompt, tools, loop). No 
 
 Faster model on a strong laptop: `ollama pull qwen2.5:7b` and set `OLLAMA_MODEL=qwen2.5:7b`.
 Check quality with `python evals.py`.
+
+## Online (Vercel)
+The same agent is deployed with the website through `../api/index.py`. See the root README for the environment variables.

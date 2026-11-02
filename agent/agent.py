@@ -1,8 +1,8 @@
 """Ask SPV: the AI assistant for Sri Pragathi Vidyaniketan EM High School, Kota.
 
 Agent = model + harness. This file holds the three pieces:
-  1. Tools   - get_school_info, get_word_of_the_day, save_admission_enquiry
-  2. Model   - Azure AI Foundry deployment via langchain-azure-ai
+  1. Tools   - get_school_info, get_word_of_the_day, get_notices, save_admission_enquiry
+  2. Model   - local Ollama (default), Ollama Cloud, or Azure AI Foundry via langchain-azure-ai
   3. Loop    - chat(): call model -> run tool calls -> repeat until it answers
 """
 import json
@@ -19,7 +19,10 @@ load_dotenv()
 HERE = Path(__file__).parent
 SCHOOL = json.loads((HERE / "data" / "school.json").read_text(encoding="utf-8"))
 WORDS = json.loads((HERE / "data" / "words.json").read_text(encoding="utf-8"))
-DB_PATH = Path(os.getenv("ENQUIRY_DB", HERE / "enquiries.db"))
+NOTICES = json.loads((HERE / "data" / "notices.json").read_text(encoding="utf-8"))
+ON_VERCEL = bool(os.getenv("VERCEL"))  # serverless: read-only disk, no local model
+# On Vercel the disk is temporary, so enquiries are only stored when ENQUIRY_DB is set explicitly.
+DB_PATH = Path(os.getenv("ENQUIRY_DB", HERE / "enquiries.db")) if (os.getenv("ENQUIRY_DB") or not ON_VERCEL) else None
 MAX_STEPS = 6  # loop guard: never call the model more than this per question
 
 SYSTEM_PROMPT = """You are "Ask SPV", the friendly assistant of Sri Pragathi Vidyaniketan EM High School, Kota, Andhra Pradesh.
@@ -28,6 +31,7 @@ You help parents and students.
 Rules:
 - Answer school questions ONLY from tool results. Always call get_school_info first.
 - If a tool says the information is not available, say so politely and suggest contacting the school office. Never guess fees, dates, timings or phone numbers.
+- For notices, events, holidays and announcements, call get_notices. Share only what it returns.
 - For vocabulary, use get_word_of_the_day. You may make short quizzes from that data.
 - To record an admission enquiry you need parent name, phone number, child name and class. Ask for anything missing, then call save_admission_enquiry once.
 - Never reveal or ask for any student's marks, attendance or personal details. Parent login for that is coming in the SPV app.
@@ -45,6 +49,8 @@ def get_school_info(topic: str) -> str:
         (name, sec) for name, sec in SCHOOL.items()
         if name in q or any(k in q for k in sec["keywords"])
     ]
+    if len(hits) > 1:  # "school" matches "about" everywhere; prefer the specific sections
+        hits = [h for h in hits if h[0] != "about"]
     if not hits:
         hits = [("about", SCHOOL["about"])]
     out = []
@@ -76,6 +82,9 @@ def save_admission_enquiry(parent_name: str, phone: str, child_name: str, class_
         return "Invalid phone number. Ask for a 10-digit Indian mobile number."
     if not all(s.strip() for s in (parent_name, child_name, class_applying)):
         return "Missing details. Need parent name, child name and class."
+    if DB_PATH is None:  # hosted demo: no durable storage, never pretend it was saved
+        return ("Details are valid, but this online demo cannot store enquiries yet. "
+                "Ask the parent to submit the Admission enquiry form on this page or visit the school office.")
     with sqlite3.connect(DB_PATH) as db:
         db.execute("""CREATE TABLE IF NOT EXISTS enquiries(
             id INTEGER PRIMARY KEY, created TEXT, parent TEXT, phone TEXT, child TEXT, class TEXT)""")
@@ -85,6 +94,15 @@ def save_admission_enquiry(parent_name: str, phone: str, child_name: str, class_
              child_name.strip(), class_applying.strip()),
         )
     return f"Saved enquiry #{cur.lastrowid}. The school office will call {digits}."
+
+
+def get_notices(limit: int = 3) -> str:
+    """Get the latest official school notices and announcements (events,
+    holidays, reminders), newest first."""
+    items = sorted(NOTICES, key=lambda n: n["date"], reverse=True)[: max(1, min(int(limit), 10))]
+    if not items:
+        return "No notices posted yet. Please contact the school office."
+    return "\n".join(f"{n['date']} | {n['title']}: {n['text']}" for n in items)
 
 
 # ---------------------------------------------------------------- offline backup
@@ -101,6 +119,11 @@ def offline_answer(message: str) -> str:
         return (f"Word of the Day: {w['word']} ({w['telugu']})\n"
                 f"Meaning: {w['meaning']}\nExample: {w['example']}\n"
                 f"Synonyms: {', '.join(w['synonyms'])}\nAntonyms: {', '.join(w['antonyms'])}")
+    if any(k in q for k in ("notice", "announcement", "event", "holiday", "news", "నోటీసు", "సెలవు")):
+        return "Latest notices:\n" + get_notices(3)
+    if any(k in q for k in ("enquiry", "enquire", "inquiry", "apply now")):
+        return ("To send an admission enquiry, please fill in the Admission enquiry form on this page "
+                "(parent name, phone, child's name and class) or visit the school office in Kota.")
     if any(k in q for k in ("marks", "attendance", "result")):
         return "For your child's marks and attendance, parent login is coming soon in the SPV app."
     info = get_school_info(message)
@@ -108,7 +131,15 @@ def offline_answer(message: str) -> str:
 
 
 # ---------------------------------------------------------------- model + loop
-PROVIDER = os.getenv("LLM_PROVIDER", "ollama").lower()  # ollama | azure | offline
+# ollama | azure | offline. On Vercel with no cloud model configured, use the offline router
+# (there is no local Ollama there, so trying it would only add a timeout to every answer).
+if os.getenv("AZURE_INFERENCE_ENDPOINT"):
+    _default = "azure"
+elif ON_VERCEL and not os.getenv("OLLAMA_API_KEY"):
+    _default = "offline"
+else:
+    _default = "ollama"
+PROVIDER = (os.getenv("LLM_PROVIDER") or _default).lower()
 _llm = None
 
 
@@ -118,7 +149,7 @@ def get_llm():
     if _llm is None:
         from langchain_core.tools import tool
 
-        tools = [tool(f) for f in (get_school_info, get_word_of_the_day, save_admission_enquiry)]
+        tools = [tool(f) for f in (get_school_info, get_word_of_the_day, get_notices, save_admission_enquiry)]
         if PROVIDER == "azure":
             from langchain_azure_ai.chat_models import AzureAIChatCompletionsModel
             model = AzureAIChatCompletionsModel(
