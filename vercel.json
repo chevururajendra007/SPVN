@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/index.py": {
-      "includeFiles": "agent/{agent.py,app_agent.py,app_api.py,data/**}",
+      "includeFiles": "agent/{agent.py,app_agent.py,app_api.py,van.py,data/**}",
       "maxDuration": 30
     }
   },

@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from agent import PROVIDER, chat
 from app_api import router as app_router
+from van import router as van_router
 
 app = FastAPI(title="Ask SPV")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"], allow_headers=["*"])
@@ -24,6 +25,7 @@ def api_chat(body: ChatIn):
 
 
 app.include_router(app_router)  # SPV School App: /api/app/chat, /api/app/home
+app.include_router(van_router)  # school van GPS: /api/van/loc/<key>, /api/van/latest
 
 
 @app.get("/api/health")

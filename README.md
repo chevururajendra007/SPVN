@@ -32,3 +32,16 @@ student, parent, teacher, office staff, admin and correspondent.
 - `agent/app_api.py`: `POST /api/app/chat {role, message, history}` and `GET /api/app/home?role=`.
 - `agent/data/demo.json`: **demo data only** (fictional names and numbers). Attendance marking and notices are drafts
   and are not saved yet. Real login (parent phone number + OTP) and the school database come next.
+
+## School van GPS (Traccar Client → SPV App)
+1. Vercel → Project → **Settings → Environment Variables**: add `VAN_KEY` = a long random secret (letters and numbers only).
+   Optional: `VAN_DEVICES` = `12345678=Van 1 Kota,87654321=Van 2` (device id from the phone app; others are rejected).
+2. Vercel → **Storage / Marketplace → Upstash for Redis** → create (free tier) → connect to this project.
+   This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` so positions are kept between calls.
+3. Redeploy (Deployments → ⋯ → Redeploy).
+4. Phone: Traccar Client → **Server URL** = `https://spvn.vercel.app/api/van/loc/<VAN_KEY>`,
+   location accuracy **High**, interval **10–15 s**, distance **0–20 m** → switch **Service status** on.
+5. Open `https://spvn.vercel.app/app/` → **Van** tab, or ask Ask SPV "where is the van?".
+
+Endpoints: `GET|POST /api/van/loc/<key>` (OsmAnd query/form or JSON), `GET /api/van/latest`.
+Note: until parent login is added, `/api/van/latest` is open to anyone with the link. Use it for testing only.

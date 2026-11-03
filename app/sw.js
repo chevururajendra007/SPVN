@@ -1,5 +1,5 @@
 // SPV School App service worker: app shell offline, API always from the network.
-const CACHE = 'spv-app-v1';
+const CACHE = 'spv-app-v2';
 const SHELL = ['/app/', '/app/index.html', '/app/manifest.webmanifest', '/app/icons/icon-192.png', '/app/icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

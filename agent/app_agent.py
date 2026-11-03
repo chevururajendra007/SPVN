@@ -14,6 +14,8 @@ import re
 from agent import (HERE, PROVIDER, WORDS, get_notices, get_school_info,
                    get_word_of_the_day, offline_answer)
 
+from van import van_status
+
 DEMO = json.loads((HERE / "data" / "demo.json").read_text(encoding="utf-8"))
 MAX_STEPS = 6
 DEMO_TAG = "(demo data)"
@@ -118,11 +120,11 @@ def get_school_overview() -> str:
 COMMON = [get_school_info, get_word_of_the_day, get_notices]
 ROLE_TOOLS = {
     "student": COMMON + [get_my_timetable, get_my_homework, make_word_quiz, summarize_chapter],
-    "parent": COMMON + [get_child_summary],
+    "parent": COMMON + [get_child_summary, van_status],
     "teacher": COMMON + [get_my_classes, mark_attendance, draft_notice, summarize_chapter, make_word_quiz],
-    "staff": COMMON + [get_office_tasks],
-    "admin": COMMON + [get_admin_overview, draft_notice],
-    "correspondent": COMMON + [get_school_overview, get_admin_overview],
+    "staff": COMMON + [get_office_tasks, van_status],
+    "admin": COMMON + [get_admin_overview, draft_notice, van_status],
+    "correspondent": COMMON + [get_school_overview, get_admin_overview, van_status],
 }
 ROLE_INFO = {
     "student": "a student. Be encouraging and simple. Help with homework, revision and vocabulary; never give answers to tests.",
@@ -162,6 +164,8 @@ ROUTES = {  # (keywords, tool) checked in order, only within the role's tools
 def offline_role_answer(role: str, message: str) -> str:
     q = message.lower()
     named = next((w["word"] for w in WORDS if w["word"].lower() in q), "")
+    if any(k in q for k in ("van", "bus", "gps", "pickup", "pick up", "వ్యాన్", "బస్సు")) and van_status in ROLE_TOOLS[role]:
+        return van_status()
     if "quiz" in q and role in ("student", "teacher"):
         return make_word_quiz(named)
     if role in ("student", "teacher") and len(message.split()) > 40:

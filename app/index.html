@@ -82,6 +82,14 @@ textarea:focus{outline:none;border-color:var(--gold)}
 form button{background:var(--navy);color:#fff;border-radius:999px;padding:0 18px;font-weight:600}
 form button:disabled{opacity:.5}
 
+/* van */
+#vanMap{height:46vh;min-height:260px;background:#dde3f0;flex:none}
+.van{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
+.van .dot{width:12px;height:12px;border-radius:50%;flex:none;background:#9aa3bd}
+.van .dot.live{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2)}
+.van b{color:var(--navy);display:block}.van small{color:var(--muted);font-size:.8rem}
+.van-pin{background:var(--navy);color:#fff;border:2px solid var(--gold);border-radius:999px;padding:2px 8px;font:700 12px Inter,sans-serif;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+
 /* bottom nav */
 nav{display:none;background:#fff;border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
 nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;font-size:.72rem;color:var(--muted);border-radius:12px}
@@ -112,11 +120,17 @@ nav button.on{color:var(--navy);font-weight:700;background:var(--bg)}
     </div>
 
     <div class="view" id="v-notices"><div class="pad" id="noticeBody"></div></div>
+
+    <div class="view" id="v-van">
+      <div id="vanMap"></div>
+      <div class="pad" id="vanList"><p class="wait">Loading van location…</p></div>
+    </div>
   </section>
 
   <nav id="nav">
     <button data-v="home" class="on"><span class="i">🏠</span>Home</button>
     <button data-v="ask"><span class="i">💬</span>Ask SPV</button>
+    <button data-v="van"><span class="i">🚐</span>Van</button>
     <button data-v="notices"><span class="i">📢</span>Notices</button>
   </nav>
 </div>
@@ -160,7 +174,37 @@ $('switchBtn').onclick=()=>{store.del('spv-role');$('main').style.display='none'
 // tabs
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
 function show(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
-  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));if(v==='ask')$('q').focus()}
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));if(v==='ask')$('q').focus();
+  clearInterval(vanTimer);if(v==='van'){openVan();vanTimer=setInterval(()=>{if(!document.hidden)loadVans()},10000)}}
+
+// van GPS (Traccar Client -> /api/van/loc/<key>; map reads /api/van/latest)
+let vanTimer=null, map=null, layer=null, fitted=false;
+function loadScript(src,css){return new Promise((ok,bad)=>{if(css){const l=document.createElement('link');l.rel='stylesheet';l.href=css;document.head.appendChild(l)}
+  const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s)})}
+async function openVan(){
+  if(!window.L){try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css')}catch{}}
+  if(!window.L){$('vanMap').style.display='none';loadVans();return} // no map: still show the van list
+  if(!map){map=L.map('vanMap',{zoomControl:true}).setView([14.0436,79.9806],13); // Kota, AP
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);layer=L.layerGroup().addTo(map)}
+  setTimeout(()=>map.invalidateSize(),50);loadVans();
+}
+function ago(s){return s<60?'just now':s<3600?Math.floor(s/60)+' min ago':Math.floor(s/3600)+' h ago'}
+async function loadVans(){
+  let d;try{const r=await fetch('/api/van/latest',{cache:'no-store'});if(!r.ok)throw 0;d=await r.json()}catch{$('vanList').innerHTML='<p class="wait">Could not load van location.</p>';return}
+  const list=$('vanList');list.innerHTML='<div class="sec">School vans · updates every 10 s</div>';
+  if(!d.vans.length){list.insertAdjacentHTML('beforeend','<p class="wait">No van location yet. The driver\'s GPS app has not sent a position.</p>')}
+  if(layer)layer.clearLayers();const pts=[];
+  d.vans.forEach(v=>{
+    const row=document.createElement('div');row.className='van';row.innerHTML='<span class="dot"></span><div><b></b><small></small></div>';
+    row.querySelector('.dot').classList.toggle('live',v.live);row.querySelector('b').textContent=v.name;
+    row.querySelector('small').textContent=(v.live?((v.kmh||0)>3?`Moving · ${Math.round(v.kmh)} km/h`:'Stopped'):'Offline')+' · '+ago(v.age_s)+(v.battery!=null?` · 🔋${v.battery}%`:'');
+    row.onclick=()=>map&&map.setView([v.lat,v.lon],16);list.appendChild(row);
+    if(layer){if(v.trail&&v.trail.length>1)L.polyline(v.trail.map(t=>[t[0],t[1]]),{color:'#f2a900',weight:4,opacity:.8}).addTo(layer);
+      L.marker([v.lat,v.lon],{icon:L.divIcon({className:'',html:`<div class="van-pin">🚐 ${v.name.replace(/[<>&]/g,'')}</div>`,iconAnchor:[30,12]})}).addTo(layer);pts.push([v.lat,v.lon])}
+  });
+  if(map&&pts.length&&!fitted){map.fitBounds(pts,{maxZoom:16,padding:[40,40]});fitted=true}
+  if(d.storage==='memory')list.insertAdjacentHTML('beforeend','<p class="wait" style="font-size:.75rem">Setup note: van storage is not connected yet, so positions may disappear.</p>');
+}
 
 // home
 async function loadHome(){

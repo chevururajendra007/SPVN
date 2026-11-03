@@ -9,9 +9,11 @@ from pydantic import BaseModel, Field  # noqa: E402
 
 from agent import PROVIDER, chat  # noqa: E402
 from app_api import router as app_router  # noqa: E402
+from van import router as van_router  # noqa: E402
 
 app = FastAPI(title="Ask SPV")
 app.include_router(app_router)  # SPV School App: /api/app/chat, /api/app/home
+app.include_router(van_router)  # school van GPS: /api/van/loc/<key>, /api/van/latest
 
 
 class ChatIn(BaseModel):
