@@ -22,26 +22,34 @@ To switch on the AI model, add these in Vercel → Project → Settings → Envi
 Admission enquiries are not stored on Vercel (no durable disk); the agent points parents to the enquiry form.
 School content to fill in: `agent/data/school.json` (contact, timings, fees, transport, uniform, calendar, safety) and `agent/data/notices.json`.
 
-## SPV School App (installable, /app)
-`app/` is a separate installable mobile app (PWA) at `/app/`, with the Ask SPV agent for six roles:
-student, parent, teacher, office staff, admin and correspondent.
+## Two separate parts
+| Part | URL | Who |
+|---|---|---|
+| Public website + Ask SPV chat | `/` | anyone |
+| **SPV School Portal** (login only) | `/app/` (also `/login`) | parents, class teachers, principal, correspondent, admin |
 
-- Open `https://<site>/app/` on a phone → browser menu → **Add to Home screen** (iPhone: Share → Add to Home Screen).
-- `agent/app_agent.py`: role-based agent. Each role gets its own system prompt and only its own tools
-  (e.g. parents: own child's summary; teachers: attendance and notice drafts; correspondent: whole-school dashboard).
-- `agent/app_api.py`: `POST /api/app/chat {role, message, history}` and `GET /api/app/home?role=`.
-- `agent/data/demo.json`: **demo data only** (fictional names and numbers). Attendance marking and notices are drafts
-  and are not saved yet. Real login (parent phone number + OTP) and the school database come next.
+## SPV School Portal (`app/`, `agent/`)
+Login with mobile number + OTP. One number can hold several roles (e.g. a teacher who is also a parent).
 
-## School van GPS (Traccar Client → SPV App)
-1. Vercel → Project → **Settings → Environment Variables**: add `VAN_KEY` = a long random secret (letters and numbers only).
-   Optional: `VAN_DEVICES` = `12345678=Van 1 Kota,87654321=Van 2` (device id from the phone app; others are rejected).
-2. Vercel → **Storage / Marketplace → Upstash for Redis** → create (free tier) → connect to this project.
-   This adds `KV_REST_API_URL` and `KV_REST_API_TOKEN` so positions are kept between calls.
-3. Redeploy (Deployments → ⋯ → Redeploy).
-4. Phone: Traccar Client → **Server URL** = `https://spvn.vercel.app/api/van/loc/<VAN_KEY>`,
-   location accuracy **High**, interval **10–15 s**, distance **0–20 m** → switch **Service status** on.
-5. Open `https://spvn.vercel.app/app/` → **Van** tab, or ask Ask SPV "where is the van?".
+| Role | Can do |
+|---|---|
+| Parent | Own children only: attendance, marks, fees + reminder, homework, updates, live van, Ask SPV |
+| Class teacher | Own class: mark attendance P/A (absent → WhatsApp to parent), post homework (→ parents), class list & marks, circulars, bus routes |
+| Principal | Dashboard (attendance + fees), fees list, payments, reminders, search, bus routes + live map, circulars to staff, parent updates, attendance for any class |
+| Correspondent | Dashboard, fees, search, bus routes, circulars |
+| Admin | Parent updates, WhatsApp outbox, fees, search, bus routes, team & logins, Excel import |
 
-Endpoints: `GET|POST /api/van/loc/<key>` (OsmAnd query/form or JSON), `GET /api/van/latest`.
-Note: until parent login is added, `/api/van/latest` is open to anyone with the link. Use it for testing only.
+Code (class framework: Model + Harness = Agent):
+- `agent/store.py` database (Neon Postgres > Upstash Redis > local file) · `agent/auth.py` OTP + roles
+- `agent/school.py` rules and data · `agent/notify.py` WhatsApp (Cloud API or one-tap wa.me)
+- `agent/skills.py` the agent's skills per role (identity bound on the server, read-only)
+- `agent/app_agent.py` Ask SPV loop for the portal · `agent/portal_api.py` routes · `agent/van.py` GPS receiver
+- `tests/test_portal.py` 17 evaluation tests · `scripts/make_test_data.py` builds the test workbook
+- `docs/HANDOVER.md` setup, rules, security and runbook
+
+No student data or phone numbers are in this repo (it is public). Test data is loaded from the private
+`SEED_DATA` Vercel setting or with Admin → Team & data → Import Excel.
+
+## School van GPS (Traccar Client)
+Phone app server URL: `https://spvn.vercel.app/api/van/loc/<VAN_KEY>` (interval 10–15 s, accuracy High).
+A new phone shows as "Unassigned phone" under Bus routes; link it to a route there.

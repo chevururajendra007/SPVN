@@ -1,4 +1,9 @@
-"""Vercel serverless entry: the same Ask SPV agent behind POST /api/chat."""
+"""Vercel serverless entry.
+
+Public:  POST /api/chat (Ask SPV on the website), GET /api/health, GET|POST /api/van/loc/<key> (van phones)
+Login:   /api/auth/*, /api/portal/* (parents, teachers, principal, correspondent, admin)
+Cron:    /api/cron/fee-reminders (daily, Vercel Cron)
+"""
 import sys
 from pathlib import Path
 
@@ -8,12 +13,12 @@ from fastapi import FastAPI  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from agent import PROVIDER, chat  # noqa: E402
-from app_api import router as app_router  # noqa: E402
+from portal_api import router as portal_router  # noqa: E402
 from van import router as van_router  # noqa: E402
 
-app = FastAPI(title="Ask SPV")
-app.include_router(app_router)  # SPV School App: /api/app/chat, /api/app/home
-app.include_router(van_router)  # school van GPS: /api/van/loc/<key>, /api/van/latest
+app = FastAPI(title="SPV School")
+app.include_router(portal_router)
+app.include_router(van_router)
 
 
 class ChatIn(BaseModel):

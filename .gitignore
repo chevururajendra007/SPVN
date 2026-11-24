@@ -1,0 +1,6 @@
+*.db
+.env
+__pycache__/
+agent/.env
+agent/data/seed.local.json
+agent/spv_store.json

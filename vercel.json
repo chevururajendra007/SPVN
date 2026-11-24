@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/index.py": {
-      "includeFiles": "agent/{agent.py,app_agent.py,app_api.py,van.py,data/**}",
+      "includeFiles": "agent/{*.py,data/**}",
       "maxDuration": 30
     }
   },
@@ -14,6 +14,16 @@
   "redirects": [
     {
       "source": "/app",
+      "destination": "/app/",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "destination": "/app/",
+      "permanent": false
+    },
+    {
+      "source": "/portal",
       "destination": "/app/",
       "permanent": false
     }
@@ -31,6 +41,15 @@
           "value": "/app/"
         }
       ]
+    }
+  ],
+  "regions": [
+    "bom1"
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/fee-reminders",
+      "schedule": "30 3 * * *"
     }
   ]
 }

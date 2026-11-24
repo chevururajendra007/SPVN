@@ -3,252 +3,507 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SPV School App</title>
-<meta name="description" content="Sri Pragathi Vidyaniketan school app with the Ask SPV AI assistant.">
+<title>SPV School Portal</title>
+<meta name="description" content="Login portal for parents, teachers and management of Sri Pragathi Vidyaniketan, Kota.">
+<meta name="robots" content="noindex">
 <meta name="theme-color" content="#16204a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="SPV App">
+<meta name="apple-mobile-web-app-title" content="SPV Portal">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@500&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#16204a;--navy-2:#222d63;--gold:#f2a900;--gold-soft:#fff4d6;--ink:#1b2340;--muted:#5b6582;--line:#e4e8f2;--bg:#f5f7fc;--card:#fff;--green:#2e8b57}
+:root{--navy:#16204a;--navy-2:#222d63;--gold:#f2a900;--gold-soft:#fff4d6;--ink:#1b2340;--muted:#5b6582;--line:#e4e8f2;--bg:#f5f7fc;--card:#fff;
+  --good:#1f7a4a;--good-bg:#e5f4ec;--bad:#b42318;--bad-bg:#fdecea;--warn:#8a5a00;--warn-bg:#fff4d6;--bar:#2b3a8c;--track:#e8ebf5}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:Inter,'Noto Sans Telugu',system-ui,sans-serif;color:var(--ink);background:var(--navy);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
-button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
-.app{max-width:520px;height:100dvh;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+.app{max-width:860px;height:100dvh;margin:0 auto;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
 .te{font-family:'Noto Sans Telugu',sans-serif}
+.hidden{display:none!important}
 
-/* role picker */
-#pick{flex:1;overflow-y:auto;background:linear-gradient(170deg,var(--navy) 0%,var(--navy-2) 60%,#2b3775 100%);color:#fff;padding:calc(28px + env(safe-area-inset-top)) 20px 28px}
-.hello{display:flex;align-items:center;gap:14px;margin-bottom:26px}
-.hello img{width:64px;height:64px;background:#fff;border-radius:50%;padding:3px}
-.hello h1{font-family:Fraunces,serif;font-size:1.5rem;line-height:1.1}
-.hello p{color:#c9d1ec;font-size:.85rem}
-#pick h2{font-size:1rem;font-weight:600;margin-bottom:12px}
-.roles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.role{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:16px 14px;text-align:left;transition:transform .15s,background .15s}
-.role:active{transform:scale(.97)}.role:hover{background:rgba(255,255,255,.14)}
-.role .i{font-size:1.7rem;display:block;margin-bottom:8px}
-.role b{display:block;font-size:1rem}.role small{color:#c9d1ec;font-size:.8rem}
-.demo-note{margin-top:20px;font-size:.78rem;color:#aeb8dc;line-height:1.5}
-.install{margin-top:18px;width:100%;background:var(--gold);color:var(--navy);font-weight:700;border-radius:999px;padding:13px;display:none}
-.ios-tip{display:none;margin-top:14px;font-size:.8rem;color:#dfe4f5;background:rgba(255,255,255,.08);border-radius:12px;padding:10px 12px}
+/* login */
+#login{flex:1;overflow-y:auto;background:linear-gradient(170deg,var(--navy),var(--navy-2) 60%,#2b3775);color:#fff;padding:calc(32px + env(safe-area-inset-top)) 20px 28px}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.brand img{width:64px;height:64px;background:#fff;border-radius:50%;padding:3px}
+.brand h1{font-family:Fraunces,serif;font-size:1.45rem;line-height:1.1}.brand p{color:#c9d1ec;font-size:.85rem}
+.lbox{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:20px;max-width:420px}
+.lbox h2{font-size:1.1rem;margin-bottom:4px}.lbox p.sub{color:#c9d1ec;font-size:.86rem;margin-bottom:16px}
+.lbox label{display:block;font-size:.8rem;color:#c9d1ec;margin:10px 0 6px}
+.lbox input{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.25);background:#fff;color:var(--ink);font-size:1.05rem;letter-spacing:.04em}
+.lbox .row{display:flex;gap:8px;align-items:center}.lbox .cc{background:rgba(255,255,255,.15);border-radius:12px;padding:13px 10px;font-weight:600}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:999px;padding:11px 18px;font-weight:700;font-size:.92rem;transition:transform .1s}
+.btn:active{transform:scale(.97)}.btn:disabled{opacity:.5}
+.btn-gold{background:var(--gold);color:var(--navy)}.btn-navy{background:var(--navy);color:#fff}
+.btn-line{border:1.5px solid var(--line);background:#fff;color:var(--navy)}.btn-wa{background:#1f8f4e;color:#fff}
+.btn-sm{padding:7px 12px;font-size:.8rem}.full{width:100%;margin-top:14px}
+.msg-err{color:#ffd2cc;font-size:.86rem;margin-top:10px;min-height:1.2em}
+.devnote{margin-top:12px;background:var(--gold-soft);color:#5b3b00;border-radius:12px;padding:10px 12px;font-size:.85rem}
+.foot{margin-top:22px;font-size:.78rem;color:#aeb8dc;max-width:420px;line-height:1.5}.foot a{color:var(--gold)}
+.rolelist{display:grid;gap:10px;margin-top:8px}
+.rolebtn{display:flex;align-items:center;gap:12px;text-align:left;background:#fff;color:var(--navy);border-radius:14px;padding:14px}
+.rolebtn b{display:block}.rolebtn small{color:var(--muted)}.rolebtn .i{font-size:1.5rem}
 
-/* main shell */
-#main{flex:1;display:none;flex-direction:column;min-height:0}
-.top{background:var(--navy);color:#fff;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:12px}
-.top img{width:40px;height:40px;background:#fff;border-radius:50%;padding:2px}
-.top b{display:block;font-family:Fraunces,serif;font-size:1.08rem;line-height:1.1}
-.top span{font-size:.76rem;color:#c9d1ec}
-.top .sw{margin-left:auto;font-size:.78rem;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 11px}
-.view{flex:1;overflow-y:auto;display:none;min-height:0}
-.view.on{display:flex;flex-direction:column}
-.pad{padding:16px}
-.badge{display:inline-block;background:var(--gold-soft);color:#8a5a00;font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 9px}
-.greet{font-family:Fraunces,serif;font-size:1.35rem;color:var(--navy);margin:8px 0 14px}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
-.card small{display:block;color:var(--muted);font-size:.72rem;margin-bottom:4px}
-.card b{font-size:1.05rem;color:var(--navy);word-break:break-word}
-.sec{font-weight:700;font-size:.92rem;color:var(--navy);margin:6px 0 10px}
-.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
-.act{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;text-align:left;font-size:.86rem;font-weight:600;color:var(--navy)}
-.act:active{background:var(--gold-soft)}
-.word{background:var(--navy);color:#fff;border-radius:18px;padding:16px;margin-bottom:18px}
-.word small{color:var(--gold);font-weight:700;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase}
-.word h3{font-family:Fraunces,serif;font-size:1.5rem;margin:4px 0}
-.word p{color:#d3d9ef;font-size:.88rem}
-.notice{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:10px}
-.notice small{color:var(--muted);font-size:.74rem}.notice b{display:block;color:var(--navy);margin:2px 0}
-.notice p{font-size:.88rem;color:var(--ink)}
+/* shell */
+#main{flex:1;display:flex;flex-direction:column;min-height:0}
+.top{background:var(--navy);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;display:flex;align-items:center;gap:10px}
+.top img{width:38px;height:38px;background:#fff;border-radius:50%;padding:2px}
+.top b{display:block;font-size:.98rem;line-height:1.15}.top span{font-size:.75rem;color:#c9d1ec}
+.top .sp{margin-left:auto;display:flex;gap:6px;align-items:center}
+.top select{background:var(--navy-2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:6px 8px;font-size:.78rem;max-width:130px}
+.top .out{font-size:.78rem;border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 10px;color:#fff}
+.tabs{display:flex;gap:6px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);padding:8px 10px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border-radius:999px;padding:8px 13px;font-size:.84rem;font-weight:600;color:var(--muted);white-space:nowrap}
+.tabs button.on{background:var(--navy);color:#fff}
+#view{flex:1;overflow-y:auto;padding:16px 16px 28px}
+.banner{border-radius:12px;padding:10px 12px;font-size:.84rem;margin-bottom:12px}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}.banner.bad{background:var(--bad-bg);color:var(--bad)}.banner.ok{background:var(--good-bg);color:var(--good)}
 
+/* blocks */
+h2.h{font-family:Fraunces,serif;color:var(--navy);font-size:1.25rem;margin:2px 0 12px}
+h3.h{font-size:.95rem;color:var(--navy);margin:18px 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.tile small{display:block;color:var(--muted);font-size:.74rem;margin-bottom:4px}
+.tile b{font-size:1.45rem;color:var(--navy);font-variant-numeric:tabular-nums}
+.tile em{display:block;font-style:normal;color:var(--muted);font-size:.74rem;margin-top:2px}
+.chip{display:inline-block;border-radius:999px;padding:3px 9px;font-size:.74rem;font-weight:700}
+.chip.good{background:var(--good-bg);color:var(--good)}.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}.chip.mute{background:var(--track);color:var(--muted)}
+.muted{color:var(--muted);font-size:.84rem}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.9rem}
+.kv:last-child{border-bottom:0}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th,td{padding:7px 6px;text-align:left;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600;font-size:.76rem}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+/* bars (single series, one hue) */
+.bars{display:grid;gap:7px}
+.bar{display:grid;grid-template-columns:62px 1fr 48px;gap:8px;align-items:center;font-size:.82rem}
+.bar .tr{height:14px;background:var(--track);border-radius:4px;overflow:hidden}
+.bar .fl{height:100%;background:var(--bar);border-radius:0 4px 4px 0}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.bar.nm .v{color:var(--muted);font-weight:500;font-size:.74rem}
+.cols{display:flex;align-items:flex-end;gap:6px;height:110px;padding-top:6px}
+.cols div{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.68rem;color:var(--muted)}
+.cols i{display:block;width:100%;max-width:34px;background:var(--bar);border-radius:4px 4px 0 0}
+.cols b{font-size:.7rem;color:var(--ink)}
+/* forms */
+.f{display:grid;gap:8px}
+.f input,.f select,.f textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;font-size:.92rem}
+.f textarea{min-height:90px;resize:vertical}
+.f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--gold)}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* attendance */
+.att{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.att .nm{flex:1;min-width:0}.att .nm b{display:block;font-size:.92rem}.att .nm small{color:var(--muted);font-size:.75rem}
+.pa{display:flex;border:1.5px solid var(--line);border-radius:999px;overflow:hidden}
+.pa button{padding:8px 14px;font-weight:700;font-size:.86rem;color:var(--muted)}
+.pa button.p.on{background:var(--good);color:#fff}.pa button.a.on{background:var(--bad);color:#fff}
+.sticky{position:sticky;bottom:-28px;background:var(--bg);padding:10px 0}
+/* lists */
+.item{padding:10px 0;border-bottom:1px solid var(--line)}.item:last-child{border-bottom:0}
+.item small{color:var(--muted);font-size:.75rem}.item p{font-size:.9rem;margin-top:2px;white-space:pre-wrap}
+.res{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.res b{color:var(--navy)}
 /* chat */
-.log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:9px}
-.msg{max-width:86%;padding:10px 13px;border-radius:16px;font-size:.92rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
-.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
-.me{background:var(--gold);color:var(--navy);align-self:flex-end;border-bottom-right-radius:4px}
-.wait{color:var(--muted);font-style:italic}
-.chips{display:flex;gap:8px;overflow-x:auto;padding:8px 16px;border-top:1px solid var(--line);background:#fff;scrollbar-width:none}
-.chips button{flex:none;border:1.5px solid var(--line);border-radius:999px;padding:6px 12px;font-size:.8rem;color:var(--navy);background:#fff}
-form{display:flex;gap:8px;padding:8px 16px 12px;background:#fff}
-textarea{flex:1;min-width:0;resize:none;height:44px;max-height:120px;padding:11px 14px;border:1.5px solid var(--line);border-radius:22px;font:400 .93rem Inter,'Noto Sans Telugu',sans-serif}
-textarea:focus{outline:none;border-color:var(--gold)}
-form button{background:var(--navy);color:#fff;border-radius:999px;padding:0 18px;font-weight:600}
-form button:disabled{opacity:.5}
-
-/* van */
-#vanMap{height:46vh;min-height:260px;background:#dde3f0;flex:none}
-.van{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:center}
-.van .dot{width:12px;height:12px;border-radius:50%;flex:none;background:#9aa3bd}
-.van .dot.live{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2)}
-.van b{color:var(--navy);display:block}.van small{color:var(--muted);font-size:.8rem}
-.van-pin{background:var(--navy);color:#fff;border:2px solid var(--gold);border-radius:999px;padding:2px 8px;font:700 12px Inter,sans-serif;white-space:nowrap;box-shadow:0 4px 10px rgba(0,0,0,.25)}
-
-/* bottom nav */
-nav{display:none;background:#fff;border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px;font-size:.72rem;color:var(--muted);border-radius:12px}
-nav button .i{font-size:1.25rem}
-nav button.on{color:var(--navy);font-weight:700;background:var(--bg)}
+.chat{display:flex;flex-direction:column;height:100%}
+.log{flex:1;display:flex;flex-direction:column;gap:8px;min-height:240px}
+.bub{max-width:88%;padding:10px 13px;border-radius:16px;font-size:.9rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
+.bub.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.bub.me{background:var(--gold);color:var(--navy);align-self:flex-end;border-bottom-right-radius:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.chips button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:.8rem;color:var(--navy)}
+/* map */
+#map{height:300px;border-radius:14px;overflow:hidden;background:#dde3f0;margin-bottom:12px}
+.pin{background:var(--navy);color:#fff;border:2px solid var(--gold);border-radius:999px;padding:2px 8px;font:700 12px Inter,sans-serif;white-space:nowrap}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#9aa3bd;margin-right:6px}
+.dot.live{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.25)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:.86rem;z-index:99;max-width:90vw}
+@media(min-width:700px){#view{padding:20px 24px 32px}}
 </style>
 </head>
 <body>
 <div class="app">
-  <section id="pick">
-    <div class="hello"><img src="icons/icon-192.png" alt=""><div><h1>SPV School App</h1><p>Sri Pragathi Vidyaniketan EM High School · Kota</p></div></div>
-    <h2>Who is using the app? <span class="te" style="color:#c9d1ec;font-weight:500">· మీరు ఎవరు?</span></h2>
-    <div class="roles" id="roles"></div>
-    <button class="install" id="installBtn">📲 Install on this phone</button>
-    <div class="ios-tip" id="iosTip">On iPhone: tap <b>Share</b> → <b>Add to Home Screen</b> to install.</div>
-    <p class="demo-note">Demo version: names and numbers are sample data. Secure login with the parent's registered phone number comes when the school database is connected.</p>
+  <!-- LOGIN (management + parents; the public website is separate at /) -->
+  <section id="login">
+    <div class="brand"><img src="icons/icon-192.png" alt=""><div><h1>SPV School Portal</h1><p>Sri Pragathi Vidyaniketan EM High School · Kota</p></div></div>
+    <div class="lbox" id="stepPhone">
+      <h2>Login · <span class="te">లాగిన్</span></h2>
+      <p class="sub">Parents, class teachers, principal, correspondent and admin. Use your registered mobile number.</p>
+      <label for="ph">Mobile number</label>
+      <div class="row"><span class="cc">+91</span><input id="ph" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="10-digit number"></div>
+      <button class="btn btn-gold full" id="sendBtn">Send OTP</button>
+      <div class="msg-err" id="err1" role="alert"></div>
+    </div>
+    <div class="lbox hidden" id="stepOtp">
+      <h2>Enter OTP</h2>
+      <p class="sub" id="otpSub"></p>
+      <label for="otp">6-digit OTP</label>
+      <input id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••">
+      <div class="devnote hidden" id="devnote"></div>
+      <button class="btn btn-gold full" id="verifyBtn">Verify &amp; login</button>
+      <div class="inline" style="justify-content:space-between;margin-top:10px">
+        <button class="btn btn-sm" style="color:#c9d1ec" id="backBtn">← Change number</button>
+        <button class="btn btn-sm" style="color:#c9d1ec" id="resendBtn">Resend OTP</button>
+      </div>
+      <div class="msg-err" id="err2" role="alert"></div>
+    </div>
+    <div class="lbox hidden" id="stepRole">
+      <h2>Continue as</h2><p class="sub">This number has more than one role.</p>
+      <div class="rolelist" id="roleList"></div>
+    </div>
+    <p class="foot">Visitors: see the <a href="/">school website</a>. Your number is used only to log in and to send school messages.</p>
   </section>
 
-  <section id="main">
-    <header class="top"><img src="icons/icon-192.png" alt=""><div><b id="roleTitle">SPV App</b><span id="roleSub"></span></div><button class="sw" id="switchBtn">Switch role</button></header>
-
-    <div class="view on" id="v-home"><div class="pad" id="homeBody"><p class="wait">Loading…</p></div></div>
-
-    <div class="view" id="v-ask">
-      <div class="log" id="log" aria-live="polite"></div>
-      <div class="chips" id="chips"></div>
-      <form id="f"><textarea id="q" rows="1" placeholder="Ask in English or తెలుగు…" maxlength="4000"></textarea><button id="send">Send</button></form>
-    </div>
-
-    <div class="view" id="v-notices"><div class="pad" id="noticeBody"></div></div>
-
-    <div class="view" id="v-van">
-      <div id="vanMap"></div>
-      <div class="pad" id="vanList"><p class="wait">Loading van location…</p></div>
-    </div>
+  <!-- APP -->
+  <section id="main" class="hidden">
+    <header class="top">
+      <img src="icons/icon-192.png" alt="">
+      <div><b id="who"></b><span id="whoRole"></span></div>
+      <div class="sp"><select id="roleSel" class="hidden" aria-label="Switch role"></select><button class="out" id="logout">Logout</button></div>
+    </header>
+    <nav class="tabs" id="tabs"></nav>
+    <main id="view"></main>
   </section>
-
-  <nav id="nav">
-    <button data-v="home" class="on"><span class="i">🏠</span>Home</button>
-    <button data-v="ask"><span class="i">💬</span>Ask SPV</button>
-    <button data-v="van"><span class="i">🚐</span>Van</button>
-    <button data-v="notices"><span class="i">📢</span>Notices</button>
-  </nav>
 </div>
 
 <script>
-const ROLES={
-  student:{i:'🎒',name:'Student',te:'విద్యార్థి',hi:'Ready to learn today?',
-    chips:["My timetable","Homework","Quiz me on today's word","Summarise a chapter: "]},
-  parent:{i:'👨‍👩‍👧',name:'Parent',te:'తల్లిదండ్రులు',hi:"Your child's day at a glance",
-    chips:["How is my child doing?","Homework today","Fee status","Latest notices","నా బిడ్డ హాజరు?"]},
-  teacher:{i:'🧑‍🏫',name:'Teacher',te:'ఉపాధ్యాయులు',hi:'Your classes today',
-    chips:["My periods today","Mark attendance: absent 3, 5","notice: ","Quiz on today's word"]},
-  staff:{i:'🗂️',name:'Office staff',te:'సిబ్బంది',hi:'Office tasks today',
-    chips:["Pending enquiries","Fee reminders","Visitors today","Latest notices"]},
-  admin:{i:'🛠️',name:'Admin',te:'అడ్మిన్',hi:'Manage the school app',
-    chips:["Users overview","Pending approvals","notice: ","Latest notices"]},
-  correspondent:{i:'🏛️',name:'Correspondent',te:'కరస్పాండెంట్',hi:'Your school today',
-    chips:["Today's overview","Fee collection","Admissions this month","App users"]}
-};
 const $=id=>document.getElementById(id);
-const store={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
-let role=null, history=[], busy=false, homeData=null;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rs=n=>'₹'+Number(n||0).toLocaleString('en-IN');
+const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
+const ROLE={parent:{i:'👨‍👩‍👧',n:'Parent',te:'తల్లిదండ్రులు'},teacher:{i:'🧑‍🏫',n:'Class teacher',te:'ఉపాధ్యాయులు'},
+  principal:{i:'🏫',n:'Principal',te:'ప్రధానోపాధ్యాయులు'},correspondent:{i:'🏛️',n:'Correspondent',te:'కరస్పాండెంట్'},admin:{i:'🛠️',n:'Admin',te:'అడ్మిన్'}};
+const TABS={
+  parent:[['home','🏠 My children'],['van','🚐 Van'],['ask','💬 Ask SPV']],
+  teacher:[['attendance','✅ Attendance'],['homework','📚 Homework'],['students','🔎 My class'],['circulars','📄 Circulars'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['ask','🤖 Ask SPV']],
+  principal:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['ask','🤖 Ask SPV']],
+  correspondent:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['circulars','📄 Circulars'],['ask','🤖 Ask SPV']],
+  admin:[['updates','📢 Parent updates'],['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['team','👥 Team & data'],['circulars','📄 Circulars'],['ask','🤖 Ask SPV']]
+};
+let S={token:ls.get('spv-token'),role:ls.get('spv-role'),phone:null,me:null,tab:null,chat:[],timer:null};
+let map=null,layer=null;
 
-// role picker
-Object.entries(ROLES).forEach(([k,r])=>{
-  const b=document.createElement('button');b.className='role';
-  b.innerHTML=`<span class="i">${r.i}</span><b>${r.name}</b><small class="te">${r.te}</small>`;
-  b.onclick=()=>enter(k);$('roles').appendChild(b);
-});
-
-function enter(k){
-  role=k;store.set('spv-role',k);history=[];
-  const r=ROLES[k];$('roleTitle').textContent=`${r.i} ${r.name}`;$('roleSub').textContent='Sri Pragathi Vidyaniketan · '+r.te;
-  $('pick').style.display='none';$('main').style.display='flex';$('nav').style.display='flex';
-  $('log').innerHTML='';addMsg(`Namaste! 🙏 I am Ask SPV. I can help you as ${r.name.toLowerCase()}. Try a suggestion below.`,'bot');
-  $('chips').innerHTML='';r.chips.forEach(c=>{const b=document.createElement('button');b.type='button';b.textContent=c.endsWith(': ')?(c==='notice: '?'Draft a notice…':c.slice(0,-2)+'…'):c;b.onclick=()=>chip(c);$('chips').appendChild(b)});
-  show('home');loadHome();
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+async function api(path,opt={}){
+  const h=Object.assign({'Content-Type':'application/json'},opt.headers||{});
+  if(S.token)h.Authorization='Bearer '+S.token; if(S.role)h['X-Role']=S.role;
+  const r=await fetch(path,Object.assign({},opt,{headers:h,cache:'no-store'}));
+  let d={};try{d=await r.json()}catch{}
+  if(r.status===401){logout();throw new Error(d.detail||'Please log in')}
+  if(!r.ok)throw new Error(d.detail||'Something went wrong. Please try again.');
+  return d;
 }
-$('switchBtn').onclick=()=>{store.del('spv-role');$('main').style.display='none';$('nav').style.display='none';$('pick').style.display='block'};
+const post=(p,b)=>api(p,{method:'POST',body:JSON.stringify(b)});
 
-// tabs
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
-function show(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
-  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));if(v==='ask')$('q').focus();
-  clearInterval(vanTimer);if(v==='van'){openVan();vanTimer=setInterval(()=>{if(!document.hidden)loadVans()},10000)}}
+// ---------------------------------------------------------------- login
+let phone='';
+$('ph').addEventListener('keydown',e=>{if(e.key==='Enter')sendOtp()});
+$('otp').addEventListener('keydown',e=>{if(e.key==='Enter')verify()});
+$('sendBtn').onclick=sendOtp;$('resendBtn').onclick=sendOtp;$('verifyBtn').onclick=verify;
+$('backBtn').onclick=()=>{$('stepOtp').classList.add('hidden');$('stepPhone').classList.remove('hidden')};
+async function sendOtp(){
+  phone=$('ph').value.replace(/\D/g,'').slice(-10);$('err1').textContent=$('err2').textContent='';
+  if(!/^[6-9]\d{9}$/.test(phone)){$('err1').textContent='Enter a valid 10-digit mobile number';return}
+  $('sendBtn').disabled=true;
+  try{const r=await post('/api/auth/otp',{phone});
+    $('stepPhone').classList.add('hidden');$('stepOtp').classList.remove('hidden');
+    $('otpSub').textContent=r.channel==='whatsapp'?`OTP sent on WhatsApp to +91 ${phone}`:`OTP for +91 ${phone}`;
+    $('devnote').classList.toggle('hidden',!r.dev_code);
+    if(r.dev_code)$('devnote').innerHTML=`<b>Testing mode:</b> your OTP is <b style="font-size:1.1rem;letter-spacing:.1em">${esc(r.dev_code)}</b>. (Before parents use the app, OTP will come on WhatsApp/SMS instead.)`;
+    $('otp').value='';$('otp').focus();
+  }catch(e){($('stepOtp').classList.contains('hidden')?$('err1'):$('err2')).textContent=e.message}
+  $('sendBtn').disabled=false;
+}
+async function verify(){
+  const code=$('otp').value.replace(/\D/g,'');if(code.length<6){$('err2').textContent='Enter the 6-digit OTP';return}
+  $('verifyBtn').disabled=true;
+  try{const r=await post('/api/auth/verify',{phone,code});S.token=r.token;ls.set('spv-token',r.token);
+    if(r.roles.length===1)return enter(r.roles[0].role);
+    $('stepOtp').classList.add('hidden');$('stepRole').classList.remove('hidden');$('roleList').innerHTML='';
+    r.roles.forEach(x=>{const b=document.createElement('button');b.className='rolebtn';
+      b.innerHTML=`<span class="i">${ROLE[x.role].i}</span><div><b>${ROLE[x.role].n}${x.class?' · Class '+x.class:''}</b><small>${esc(x.name)} · <span class="te">${ROLE[x.role].te}</span></small></div>`;
+      b.onclick=()=>enter(x.role);$('roleList').appendChild(b)});
+  }catch(e){$('err2').textContent=e.message}
+  $('verifyBtn').disabled=false;
+}
+function logout(){clearInterval(S.timer);ls.del('spv-token');ls.del('spv-role');S={token:null,role:null,chat:[]};
+  $('main').classList.add('hidden');$('login').classList.remove('hidden');
+  ['stepOtp','stepRole'].forEach(i=>$(i).classList.add('hidden'));$('stepPhone').classList.remove('hidden')}
+$('logout').onclick=logout;
 
-// van GPS (Traccar Client -> /api/van/loc/<key>; map reads /api/van/latest)
-let vanTimer=null, map=null, layer=null, fitted=false;
-function loadScript(src,css){return new Promise((ok,bad)=>{if(css){const l=document.createElement('link');l.rel='stylesheet';l.href=css;document.head.appendChild(l)}
-  const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=bad;document.head.appendChild(s)})}
-async function openVan(){
-  if(!window.L){try{await loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js','https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css')}catch{}}
-  if(!window.L){$('vanMap').style.display='none';loadVans();return} // no map: still show the van list
-  if(!map){map=L.map('vanMap',{zoomControl:true}).setView([14.0436,79.9806],13); // Kota, AP
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);layer=L.layerGroup().addTo(map)}
-  setTimeout(()=>map.invalidateSize(),50);loadVans();
+async function enter(role){
+  S.role=role;ls.set('spv-role',role);
+  try{S.me=await api('/api/portal/me')}catch(e){if(S.token)toast(e.message);return logout()}
+  S.role=S.me.active.role;ls.set('spv-role',S.role);
+  $('login').classList.add('hidden');$('main').classList.remove('hidden');
+  $('who').textContent=S.me.active.name||ROLE[S.role].n;
+  $('whoRole').textContent=ROLE[S.role].n+(S.me.active.class?` · Class ${S.me.active.class}`:'')+' · +91 '+S.me.phone;
+  const sel=$('roleSel');sel.innerHTML='';sel.classList.toggle('hidden',S.me.roles.length<2);
+  S.me.roles.forEach(x=>{const o=document.createElement('option');o.value=x.role;o.textContent=ROLE[x.role].n;o.selected=x.role===S.role;sel.appendChild(o)});
+  sel.onchange=()=>{S.chat=[];enter(sel.value)};
+  $('tabs').innerHTML='';TABS[S.role].forEach(([k,l])=>{const b=document.createElement('button');b.textContent=l;b.dataset.t=k;b.onclick=()=>show(k);$('tabs').appendChild(b)});
+  show(TABS[S.role][0][0]);
+}
+function show(t){S.tab=t;clearInterval(S.timer);map=null;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  const v=$('view');v.scrollTop=0;v.innerHTML='<p class="muted">Loading…</p>';
+  (VIEWS[t]||(()=>v.innerHTML=''))(v).catch(e=>v.innerHTML=`<div class="banner bad">${esc(e.message)}</div>`)}
+
+function statusBanners(){const s=S.me.status,out=[];
+  if(!s.storage.durable)out.push('<div class="banner bad"><b>Setup needed:</b> the database is not connected yet, so saved data can disappear. Connect Neon Postgres in Vercel → Storage.</div>');
+  return out.join('')}
+function bars(rows){return `<div class="bars">${rows.map(r=>r.v==null?`<div class="bar nm"><span>${esc(r.l)}</span><div class="tr"></div><span class="v">${esc(r.na||'—')}</span></div>`:
+  `<div class="bar" title="${esc(r.l)}: ${r.v}%${r.t?' · '+esc(r.t):''}"><span>${esc(r.l)}</span><div class="tr"><div class="fl" style="width:${Math.max(2,r.v)}%"></div></div><span class="v">${r.v}%</span></div>`).join('')}</div>`}
+function waBtn(m){return m.status==='queued'?`<a class="btn btn-wa btn-sm" href="${esc(m.link)}" target="_blank" rel="noopener" data-mid="${esc(m.id||'')}" onclick="markSent(this)">Send on WhatsApp</a>`:
+  `<span class="chip ${m.status==='sent'||m.status==='sent-manual'?'good':m.status==='failed'?'bad':'mute'}">${esc(m.status==='skipped'?'test number':m.status)}</span>`}
+function markSent(a){const id=a.dataset.mid;if(id)post(`/api/portal/outbox/${encodeURIComponent(id)}/sent`,{}).catch(()=>{});
+  setTimeout(()=>{a.outerHTML='<span class="chip good">opened</span>'},400)}
+
+// ---------------------------------------------------------------- views
+const VIEWS={
+// ---------- parent
+async home(v){
+  const d=await api('/api/portal/parent');
+  v.innerHTML=statusBanners()+`<h2 class="h">My children · <span class="te">నా పిల్లలు</span></h2>`+d.children.map(k=>{
+    const a=k.attendance,today=a.today==='P'?'<span class="chip good">Present today</span>':a.today==='A'?'<span class="chip bad">Absent today</span>':'<span class="chip mute">Today not marked</span>';
+    const exams=Object.keys(k.marks||{});const subs=exams.length?Object.keys(k.marks[exams[0]]):[];
+    return `<div class="card">
+      <div class="inline" style="justify-content:space-between"><div><b style="font-size:1.08rem;color:var(--navy)">${esc(k.name)}</b><div class="muted">Class ${k.class}-${esc(k.section)} · Class teacher ${esc(k.teacher||'—')} · ${esc(k.id)}</div></div>${today}</div>
+      ${k.fee_reminder?`<div class="banner warn" style="margin-top:12px">💰 <b>Fee reminder:</b> ${rs(k.balance)} pending (${k.balance_pct}% of ${rs(k.fee_total)}). Please pay at the school office.</div>`:''}
+      <div class="tiles" style="margin-top:12px">
+        <div class="tile"><small>Attendance</small><b>${a.pct??'—'}${a.pct!=null?'%':''}</b><em>${a.present} present · ${a.absent} absent (${a.days} days)</em></div>
+        <div class="tile"><small>Fee paid</small><b>${rs(k.fee_paid)}</b><em>of ${rs(k.fee_total)} · balance ${rs(k.balance)}</em></div>
+        <div class="tile"><small>Bus</small><b style="font-size:1rem">${esc(k.route_info?.name||'Own transport')}</b><em>${k.route_info?(k.route_info.live?'<span class="dot live"></span>Van live now':'Van not live'):''}</em></div>
+      </div>
+      ${exams.length?`<h3 class="h">Marks</h3><div class="scroll"><table><tr><th>Subject</th>${exams.map(e=>`<th class="n">${esc(e)}</th>`).join('')}</tr>
+        ${subs.map(s=>`<tr><td>${esc(s)}</td>${exams.map(e=>`<td class="n">${k.marks[e][s]??''}</td>`).join('')}</tr>`).join('')}
+        <tr><th>Total</th>${exams.map(e=>{const t=Object.values(k.marks[e]).reduce((x,y)=>x+y,0);return `<th class="n">${t}/${subs.length*100}</th>`}).join('')}</tr></table></div>`:''}
+      <h3 class="h">Recent attendance</h3><div class="inline">${a.recent.map(r=>`<span class="chip ${r.status==='P'?'good':'bad'}" title="${esc(r.date)}">${r.date.slice(8)} ${r.status}</span>`).join('')||'<span class="muted">No records yet</span>'}</div>
+      <h3 class="h">Homework</h3>${k.homework.map(h=>`<div class="item"><small>${esc(h.date)} · ${esc(h.subject)} · ${esc(h.by)}</small><p>${esc(h.text)}</p></div>`).join('')||'<p class="muted">No homework posted yet.</p>'}
+    </div>`}).join('')+
+    `<h3 class="h">School updates</h3><div class="card">${d.updates.map(u=>`<div class="item"><small>${esc(u.date)} · ${esc(u.from)}</small><p>${esc(u.text)}</p></div>`).join('')||'<p class="muted">No updates yet.</p>'}</div>`;
+},
+async van(v){return VIEWS.routes(v)},
+
+// ---------- teacher (and principal/admin for any class)
+async attendance(v){
+  const mgmt=S.role!=='teacher';let cls=mgmt?(Number(ls.get('spv-cls'))||1):0;
+  const load=async()=>{
+    const d=await api('/api/portal/class'+(mgmt?`?cls=${cls}`:''));const st={};d.students.forEach(s=>st[s.id]=s.today||'P');
+    v.innerHTML=statusBanners()+`<h2 class="h">Attendance · Class ${d.class}</h2>
+      ${mgmt?`<div class="inline" style="margin-bottom:10px"><select id="clsSel" class="btn-line" style="padding:8px 12px;border-radius:999px">${[1,2,3,4,5,6,7,8,9,10].map(c=>`<option ${c===d.class?'selected':''}>${c}</option>`).join('')}</select><span class="muted">Choose class</span></div>`:''}
+      <p class="muted">${esc(d.date)} · ${d.saved?'<span class="chip good">Saved today</span> You can correct and save again.':'Tap A for absent students, then Save. Parents of absent students get a WhatsApp message.'}</p>
+      <div class="inline" style="margin:10px 0"><button class="btn btn-line btn-sm" id="allP">All present</button><span class="muted" id="cnt"></span></div>
+      <div class="card" style="padding:4px 14px">${d.students.map(s=>`<div class="att"><div class="nm"><b>${s.sno}. ${esc(s.name)}</b><small>${esc(s.parent)}</small></div>
+        <div class="pa" data-id="${esc(s.id)}"><button class="p">P</button><button class="a">A</button></div></div>`).join('')}</div>
+      <div class="sticky"><button class="btn btn-navy" style="width:100%" id="saveAtt">Save attendance</button></div><div id="attRes"></div>`;
+    const paint=()=>{let a=0;v.querySelectorAll('.pa').forEach(p=>{const x=st[p.dataset.id];p.querySelector('.p').classList.toggle('on',x==='P');p.querySelector('.a').classList.toggle('on',x==='A');if(x==='A')a++});
+      $('cnt').textContent=`${d.students.length-a} present · ${a} absent`};
+    v.querySelectorAll('.pa').forEach(p=>{p.querySelector('.p').onclick=()=>{st[p.dataset.id]='P';paint()};p.querySelector('.a').onclick=()=>{st[p.dataset.id]='A';paint()}});
+    $('allP').onclick=()=>{Object.keys(st).forEach(k=>st[k]='P');paint()};paint();
+    if(mgmt)$('clsSel').onchange=e=>{cls=Number(e.target.value);ls.set('spv-cls',cls);load()};
+    $('saveAtt').onclick=async()=>{$('saveAtt').disabled=true;
+      try{const r=await post('/api/portal/attendance',{cls:d.class,marks:st});
+        $('attRes').innerHTML=`<div class="card"><div class="banner ok">✅ Saved: ${r.present} present, ${r.absent} absent.</div>
+          ${r.messages.length?`<h3 class="h">WhatsApp to parents of absent students</h3>${r.messages.map(m=>`<div class="res" style="cursor:default"><span>${esc(m.name)}</span>${waBtn(m)}</div>`).join('')}
+          ${r.messages.some(m=>m.status==='queued')?'<p class="muted" style="margin-top:8px">Tap each button to send from your WhatsApp (automatic sending starts once the school WhatsApp Business number is connected).</p>':''}`:'<p class="muted">No new absent alerts.</p>'}</div>`;
+        $('attRes').scrollIntoView({behavior:'smooth'});toast('Attendance saved');
+      }catch(e){toast(e.message)}$('saveAtt').disabled=false};
+  };await load();
+},
+async homework(v){
+  const d=await api('/api/portal/class');
+  v.innerHTML=`<h2 class="h">Homework · Class ${d.class}</h2><div class="card f">
+    <select id="hwSub">${['English','Telugu','Hindi','Maths','Science','Social','Other'].map(s=>`<option>${s}</option>`).join('')}</select>
+    <textarea id="hwText" placeholder="Write today's homework…" maxlength="1500"></textarea>
+    <button class="btn btn-navy" id="hwPost">Post & send to parents</button><div id="hwRes"></div></div>
+    <h3 class="h">Posted</h3><div class="card" id="hwList">${d.homework.map(h=>`<div class="item"><small>${esc(h.date)} · ${esc(h.subject)}</small><p>${esc(h.text)}</p></div>`).join('')||'<p class="muted">Nothing posted yet.</p>'}</div>`;
+  $('hwPost').onclick=async()=>{try{const r=await post('/api/portal/homework',{subject:$('hwSub').value,text:$('hwText').value});
+    $('hwRes').innerHTML=`<div class="banner ok">Posted. Parents see it in the app. ${r.messages.sent?r.messages.sent+' WhatsApp sent automatically. ':''}${r.messages.queued?r.messages.queued+' parent(s) waiting in the WhatsApp tab. ':''}</div>
+      <a class="btn btn-wa" href="${esc(r.group_link)}" target="_blank" rel="noopener">Share to class WhatsApp group</a>`;$('hwText').value='';toast('Homework posted');
+    const h=r.item;if($('hwList').querySelector('.muted:only-child'))$('hwList').innerHTML='';$('hwList').insertAdjacentHTML('afterbegin',`<div class="item"><small>${esc(h.date)} · ${esc(h.subject)}</small><p>${esc(h.text)}</p></div>`)}catch(e){toast(e.message)}};
+},
+async students(v){
+  const d=await api('/api/portal/class');
+  v.innerHTML=`<h2 class="h">My class · Class ${d.class}</h2><div class="f" style="margin-bottom:10px"><input id="q" placeholder="Search name…"></div><div class="card" id="list"></div>`;
+  const draw=q=>$('list').innerHTML=d.students.filter(s=>s.name.toLowerCase().includes(q)).map(s=>`<div class="res" data-id="${esc(s.id)}"><div><b>${s.sno}. ${esc(s.name)}</b><div class="muted">${esc(s.parent)} · ${esc(s.phone)}</div></div>${s.fee_flag?'<span class="chip warn">fee pending</span>':''}</div>`).join('')||'<p class="muted">No match.</p>';
+  draw('');$('q').oninput=e=>draw(e.target.value.toLowerCase());
+  $('list').onclick=e=>{const r=e.target.closest('.res');if(r)studentDetail(r.dataset.id)};
+},
+
+// ---------- management
+async dash(v){
+  const d=await api('/api/portal/dashboard');const a=d.attendance,f=d.fees;
+  v.innerHTML=statusBanners()+`<h2 class="h">School dashboard</h2>
+    <div class="tiles">
+      <div class="tile"><small>Students</small><b>${d.students}</b><em>Classes 1–10</em></div>
+      <div class="tile"><small>Attendance today</small><b>${a.pct??'—'}${a.pct!=null?'%':''}</b><em>${a.marked}/${a.total_classes} classes marked</em></div>
+      <div class="tile"><small>Fees collected</small><b>${f.pct}%</b><em>${rs(f.paid)} of ${rs(f.total)}</em></div>
+      <div class="tile"><small>Fee balance</small><b>${rs(f.balance)}</b><em>${f.flagged.length} students above 30%</em></div>
+    </div>
+    <div class="card"><h3 class="h" style="margin-top:0">Attendance today by class</h3>
+      ${bars(a.classes.map(c=>({l:'Class '+c.class,v:c.marked?c.pct:null,na:'not marked',t:c.marked?`${c.present}/${c.strength} present`:''})))}
+      ${a.classes.some(c=>c.absentees&&c.absentees.length)?`<h3 class="h">Absent today</h3>${a.classes.filter(c=>c.absentees&&c.absentees.length).map(c=>`<div class="kv"><span>Class ${c.class}</span><span>${c.absentees.map(esc).join(', ')}</span></div>`).join('')}`:''}
+    </div>
+    <div class="card"><h3 class="h" style="margin-top:0">Attendance · last 7 school days</h3>
+      <div class="cols">${d.trend.map(t=>`<div title="${esc(t.date)}: ${t.pct??'not marked'}${t.pct!=null?'%':''}"><b>${t.pct??'–'}</b><i style="height:${t.pct?Math.max(4,(t.pct-50)*1.6):2}px;${t.pct?'':'background:var(--track)'}"></i>${t.date.slice(8)}/${t.date.slice(5,7)}</div>`).join('')}</div>
+      <p class="muted" style="margin-top:6px">Bar height starts at 50% so day-to-day changes are visible.</p></div>
+    <div class="card"><h3 class="h" style="margin-top:0">Fee collection by class</h3>
+      ${bars(f.classes.map(c=>({l:'Class '+c.class,v:c.pct,t:`${rs(c.paid)} of ${rs(c.total)}`})))}
+      <p class="muted" style="margin-top:8px">${esc(f.rule)}.</p></div>`;
+},
+async fees(v){
+  const d=await api('/api/portal/dashboard'),f=d.fees,canPay=['principal','admin'].includes(S.role);
+  v.innerHTML=`<h2 class="h">Fees</h2>
+    <div class="tiles"><div class="tile"><small>Collected</small><b>${f.pct}%</b><em>${rs(f.paid)}</em></div><div class="tile"><small>Balance</small><b>${rs(f.balance)}</b><em>of ${rs(f.total)}</em></div>
+      <div class="tile"><small>Reminder list</small><b>${f.flagged.length}</b><em>above 30% pending</em></div></div>
+    <div class="card"><b>Automatic reminders</b><p class="muted" style="margin:4px 0 10px">${esc(f.rule)}. Runs every morning. Last run: ${f.last_run?new Date(f.last_run.at*1000).toLocaleString('en-IN')+` (${f.last_run.count} sent)`:'not yet'}.</p>
+      <button class="btn btn-navy btn-sm" id="remind">Send due reminders now</button><div id="remRes"></div></div>
+    <h3 class="h">Students above 30% pending</h3><div class="f" style="margin-bottom:8px"><input id="fq" placeholder="Filter by name or class…"></div>
+    <div class="card scroll"><table id="ft"></table></div>`;
+  const draw=q=>$('ft').innerHTML=`<tr><th>Student</th><th class="n">Class</th><th class="n">Pending</th><th class="n">%</th><th>Last reminder</th>${canPay?'<th></th>':''}</tr>`+
+    f.flagged.filter(x=>!q||x.name.toLowerCase().includes(q)||String(x.class)===q).map(x=>`<tr><td>${esc(x.name)}<div class="muted">${esc(x.parent)}</div></td><td class="n">${x.class}</td><td class="n">${rs(x.balance)}</td><td class="n">${x.pct}%</td><td>${esc(x.last_reminder||'never')}</td>${canPay?`<td><button class="btn btn-line btn-sm" data-pay="${esc(x.id)}" data-bal="${x.balance}">+ Paid</button></td>`:''}</tr>`).join('');
+  draw('');$('fq').oninput=e=>draw(e.target.value.trim().toLowerCase());
+  $('ft').onclick=async e=>{const b=e.target.closest('[data-pay]');if(!b)return;
+    const amt=prompt(`Amount received (pending ${rs(b.dataset.bal)})`);if(!amt)return;
+    try{const r=await post('/api/portal/fees/payment',{student:b.dataset.pay,amount:Number(String(amt).replace(/\D/g,''))});toast(`Saved. Balance now ${rs(r.balance)}`);show('fees')}catch(err){toast(err.message)}};
+  $('remind').onclick=async()=>{$('remind').disabled=true;try{const r=await post('/api/portal/fees/remind',{});
+    $('remRes').innerHTML=`<div class="banner ok" style="margin-top:10px">${r.count} reminder(s) due today.${r.count?' Queued ones are in the WhatsApp tab.':' Everyone due was reminded in the last 3 weeks.'}</div>`}catch(e){toast(e.message)}$('remind').disabled=false};
+},
+async search(v){
+  v.innerHTML=`<h2 class="h">Search students</h2><div class="f"><input id="sq" placeholder="Name, admission no, parent, phone or class (e.g. 6)…" autofocus></div><div class="card" id="sr" style="margin-top:10px"><p class="muted">Type at least 2 letters.</p></div>`;
+  let t;$('sq').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{const q=e.target.value.trim();if(q.length<1)return;
+    const r=await api('/api/portal/search?q='+encodeURIComponent(q));
+    $('sr').innerHTML=r.results.map(s=>`<div class="res" data-id="${esc(s.id)}"><div><b>${esc(s.name)}</b><div class="muted">Class ${s.class} · ${esc(s.id)} · ${esc(s.parent)} ${esc(s.phone)}</div></div>${s.fee_flag?'<span class="chip warn">fee pending</span>':'<span class="chip good">fees ok</span>'}</div>`).join('')||'<p class="muted">No students found.</p>'},250)};
+  $('sr').onclick=e=>{const r=e.target.closest('.res');if(r)studentDetail(r.dataset.id)};
+},
+async circulars(v){
+  const d=await api('/api/portal/circulars'),can=S.role!=='teacher';
+  v.innerHTML=`<h2 class="h">Circulars to staff</h2>${can?`<div class="card f"><textarea id="cText" placeholder="Dear staff, …"></textarea><button class="btn btn-navy" id="cPost">Send circular to all staff</button></div>`:''}
+    <div class="card">${d.items.map(c=>`<div class="item"><small>${esc(c.date)} · ${esc(c.from)}</small><p>${esc(c.text)}</p></div>`).join('')||'<p class="muted">No circulars yet.</p>'}</div>`;
+  if(can)$('cPost').onclick=async()=>{try{await post('/api/portal/circulars',{text:$('cText').value});toast('Circular sent to staff');show('circulars')}catch(e){toast(e.message)}};
+},
+async updates(v){
+  const d=await api('/api/portal/updates');
+  v.innerHTML=`<h2 class="h">Updates to parents</h2><div class="card f">
+    <select id="uAud"><option value="all">All parents</option>${[1,2,3,4,5,6,7,8,9,10].map(c=>`<option value="${c}">Class ${c} parents</option>`).join('')}</select>
+    <textarea id="uText" placeholder="e.g. School is closed on Monday for Sankranti."></textarea>
+    <button class="btn btn-navy" id="uPost">Send update</button><div id="uRes"></div></div>
+    <h3 class="h">Sent</h3><div class="card" id="uList">${d.items.map(u=>`<div class="item"><small>${esc(u.date)} · ${u.audience==='all'?'All parents':'Class '+u.audience} · ${esc(u.from)}</small><p>${esc(u.text)}</p></div>`).join('')||'<p class="muted">No updates yet.</p>'}</div>`;
+  $('uPost').onclick=async()=>{try{const r=await post('/api/portal/updates',{text:$('uText').value,audience:$('uAud').value});
+    $('uRes').innerHTML=`<div class="banner ok">Sent. Parents see it in the app. ${r.messages.sent?r.messages.sent+' WhatsApp sent. ':''}${r.messages.queued?r.messages.queued+' waiting in the WhatsApp tab. ':''}</div><a class="btn btn-wa" href="${esc(r.group_link)}" target="_blank" rel="noopener">Share to a WhatsApp group</a>`;$('uText').value='';
+    const u=r.item;if($('uList').querySelector('.muted:only-child'))$('uList').innerHTML='';$('uList').insertAdjacentHTML('afterbegin',`<div class="item"><small>${esc(u.date)} · ${u.audience==='all'?'All parents':'Class '+u.audience} · ${esc(u.from)}</small><p>${esc(u.text)}</p></div>`)}catch(e){toast(e.message)}};
+},
+async messages(v){
+  const d=await api('/api/portal/outbox');const q=d.items.filter(m=>m.status==='queued');
+  v.innerHTML=`<h2 class="h">WhatsApp messages</h2>
+    <div class="banner ${d.mode==='api'?'ok':'warn'}">${d.mode==='api'?'Automatic sending is ON (school WhatsApp Business number).':'Automatic sending is not connected yet. Tap <b>Send on WhatsApp</b> to send each message from this phone.'}</div>
+    <h3 class="h">Waiting (${q.length})</h3><div class="card">${q.map(m=>`<div class="item"><small>${esc(m.kind)} · +91 ${esc(m.to)} · ${new Date(m.at*1000).toLocaleString('en-IN')}</small><p>${esc(m.text)}</p><div style="margin-top:6px">${waBtn(m)}</div></div>`).join('')||'<p class="muted">Nothing waiting.</p>'}</div>
+    <h3 class="h">Recent</h3><div class="card">${d.items.filter(m=>m.status!=='queued').slice(0,40).map(m=>`<div class="res" style="cursor:default"><span class="muted">${esc(m.kind)} · ${esc(m.to)}</span>${waBtn(m)}</div>`).join('')||'<p class="muted">None yet.</p>'}</div>`;
+},
+async routes(v){
+  const canEdit=['principal','admin'].includes(S.role);
+  v.innerHTML=`<h2 class="h">${S.role==='parent'?'School van':'Bus routes · live'}</h2><div id="map"></div><div id="rl"><p class="muted">Loading…</p></div>`;
+  await loadLeaflet();
+  if(window.L){map=L.map('map').setView([14.0436,79.9806],13);layer=L.layerGroup().addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map)}else $('map').classList.add('hidden');
+  let fitted=false;
+  const draw=async()=>{const d=await api('/api/portal/routes');if(S.tab!=='routes'&&S.tab!=='van')return;
+    const pts=[];if(layer)layer.clearLayers();
+    const unassigned=d.routes.filter(r=>String(r.id).startsWith('dev-')),real=d.routes.filter(r=>!String(r.id).startsWith('dev-'));
+    $('rl').innerHTML=(d.routes.length?'':'<p class="muted">No bus route is linked to your child.</p>')+d.routes.map(r=>{const p=r.position;
+      if(p&&layer){if(p.trail&&p.trail.length>1)L.polyline(p.trail.map(t=>[t[0],t[1]]),{color:'#f2a900',weight:4}).addTo(layer);
+        L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div class="pin">🚐 ${esc(r.name.split('·')[0])}</div>`,iconAnchor:[30,12]})}).addTo(layer);pts.push([p.lat,p.lon])}
+      const st=p?(r.live?((p.kmh||0)>3?`Moving · ${Math.round(p.kmh)} km/h`:'Stopped'):'Offline')+` · ${ago(p.age_s)}${p.battery!=null?' · 🔋'+p.battery+'%':''}`:'No GPS yet';
+      return `<div class="card"><div class="inline" style="justify-content:space-between"><b style="color:var(--navy)"><span class="dot ${r.live?'live':''}"></span>${esc(r.name)}</b>${r.students!=null?`<span class="chip mute">${r.students} students</span>`:''}</div>
+        <p class="muted" style="margin-top:4px">${st}${r.stops&&r.stops.length?' · '+r.stops.map(esc).join(' → '):''}</p>
+        ${r.driver?`<p class="muted">Driver: ${esc(r.driver)} ${r.driver_phone?`· <a href="tel:${esc(r.driver_phone)}">${esc(r.driver_phone)}</a>`:''}</p>`:''}
+        ${p?`<a class="btn btn-line btn-sm" style="margin-top:8px" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lon}">Open in Google Maps</a>`:''}
+        ${canEdit&&!String(r.id).startsWith('dev-')?`<details style="margin-top:8px"><summary class="muted">Set GPS phone & driver</summary><div class="f" style="margin-top:8px">
+          <input data-r="${esc(r.id)}" data-k="device_id" placeholder="Traccar device identifier" value="${esc(r.device_id||'')}">
+          <input data-r="${esc(r.id)}" data-k="driver" placeholder="Driver name" value="${esc(r.driver||'')}">
+          <input data-r="${esc(r.id)}" data-k="driver_phone" placeholder="Driver mobile" value="${esc(r.driver_phone||'')}">
+          <button class="btn btn-navy btn-sm" data-save="${esc(r.id)}">Save</button></div></details>`:''}
+        ${canEdit&&String(r.id).startsWith('dev-')?`<div class="inline" style="margin-top:8px"><select data-link="${esc(r.device_id)}" class="btn-line" style="padding:7px 10px;border-radius:999px">${real.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select><button class="btn btn-navy btn-sm" data-dolink="${esc(r.device_id)}">Link this phone</button></div>`:''}
+      </div>`}).join('')+(canEdit?`<p class="muted">Van phones: install <b>Traccar Client</b>, set the server URL to <code>https://spvn.vercel.app/api/van/loc/&lt;VAN_KEY&gt;</code> and copy its device identifier here. A new phone first appears as "Unassigned phone"; link it to a route.</p>`:'');
+    if(map&&pts.length&&!fitted){map.fitBounds(pts,{maxZoom:15,padding:[40,40]});fitted=true}
+  };
+  $('rl').onclick=async e=>{const s=e.target.closest('[data-save]'),l=e.target.closest('[data-dolink]');
+    try{if(s){const b={};v.querySelectorAll(`[data-r="${s.dataset.save}"]`).forEach(i=>b[i.dataset.k]=i.value);await post('/api/portal/routes/'+s.dataset.save,b);toast('Route saved');draw()}
+      if(l){const rid=v.querySelector(`[data-link="${l.dataset.dolink}"]`).value;await post('/api/portal/routes/'+rid,{device_id:l.dataset.dolink});toast('Phone linked');draw()}}catch(err){toast(err.message)}};
+  await draw();S.timer=setInterval(()=>{if(!document.hidden)draw().catch(()=>{})},10000);
+},
+async team(v){
+  const d=await api('/api/portal/team'),st=S.me.status;
+  v.innerHTML=`<h2 class="h">Team & data</h2>
+    <div class="card"><b>System status</b>
+      <div class="kv"><span>Database</span><span>${st.storage.backend==='postgres'?'<span class="chip good">Postgres (Neon)</span>':st.storage.durable?'<span class="chip good">'+esc(st.storage.backend)+'</span>':'<span class="chip bad">Not connected – data can be lost</span>'}</span></div>
+      <div class="kv"><span>Login OTP</span><span>${st.otp_dev_mode?'<span class="chip warn">Testing mode (code on screen)</span>':'<span class="chip good">Sent to phone</span>'}</span></div>
+      <div class="kv"><span>WhatsApp</span><span>${st.whatsapp==='api'?'<span class="chip good">Automatic</span>':'<span class="chip warn">One-tap (manual)</span>'}</span></div>
+      <div class="kv"><span>Van GPS key</span><span>${st.van_key?'<span class="chip good">Set</span>':'<span class="chip bad">Missing</span>'}</span></div>
+      <div class="kv"><span>Data loaded</span><span>${d.meta?`${d.meta.students} students · ${new Date(d.meta.loaded_at*1000).toLocaleDateString('en-IN')}`:'—'}</span></div></div>
+    <div class="card"><b>Import students from Excel</b><p class="muted" style="margin:4px 0 10px">Same format as the test workbook (sheets: Students, Marks, Staff, Routes). This replaces the student list, marks and class teachers.</p>
+      <input type="file" id="xl" accept=".xlsx"><button class="btn btn-navy btn-sm" id="imp" style="margin-left:6px">Import</button><div id="impRes"></div></div>
+    <div class="card"><b>Add a login</b><div class="f" style="margin-top:8px">
+      <input id="tPh" placeholder="Mobile number" inputmode="numeric"><input id="tNm" placeholder="Name">
+      <select id="tRole"><option value="teacher">Class teacher</option><option value="principal">Principal</option><option value="correspondent">Correspondent</option><option value="admin">Admin</option></select>
+      <select id="tCls">${[1,2,3,4,5,6,7,8,9,10].map(c=>`<option value="${c}">Class ${c}</option>`).join('')}</select>
+      <button class="btn btn-navy" id="tAdd">Add</button></div></div>
+    <h3 class="h">Who can log in</h3><div class="card scroll"><table><tr><th>Name</th><th>Role</th><th>Mobile</th><th></th></tr>
+      ${d.items.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(ROLE[t.role]?.n||t.role)}${t.class?' · '+t.class:''}</td><td>${esc(t.phone)}</td><td>${t.fixed?'<span class="muted">Vercel</span>':`<button class="btn btn-line btn-sm" data-del="${esc(t.phone)}|${esc(t.role)}">Remove</button>`}</td></tr>`).join('')}
+      <tr><td colspan="4" class="muted">Parents log in with the parent mobile on their child's record.</td></tr></table></div>`;
+  $('tRole').onchange=e=>$('tCls').classList.toggle('hidden',e.target.value!=='teacher');
+  $('tAdd').onclick=async()=>{try{await post('/api/portal/team',{phone:$('tPh').value,name:$('tNm').value,role:$('tRole').value,cls:$('tRole').value==='teacher'?Number($('tCls').value):null});toast('Added');show('team')}catch(e){toast(e.message)}};
+  v.querySelector('table').onclick=async e=>{const b=e.target.closest('[data-del]');if(!b||!confirm('Remove this login?'))return;const [p,r]=b.dataset.del.split('|');
+    try{await api(`/api/portal/team/${p}/${r}`,{method:'DELETE'});toast('Removed');show('team')}catch(err){toast(err.message)}};
+  $('imp').onclick=async()=>{const f=$('xl').files[0];if(!f)return toast('Choose an .xlsx file');if(!confirm('Replace all student data with this file?'))return;
+    try{const r=await api('/api/portal/import',{method:'POST',body:f,headers:{'Content-Type':'application/octet-stream'}});
+      $('impRes').innerHTML=`<div class="banner ok" style="margin-top:10px">Imported ${r.students} students, ${r.staff} teachers, ${r.routes} routes.${r.errors.length?'<br>Skipped: '+r.errors.map(esc).join('; '):''}</div>`}catch(e){toast(e.message)}};
+},
+async ask(v){
+  const chips={parent:["How is my child doing?","Fee balance","Where is the van?","Homework today","నా బిడ్డ హాజరు?"],
+    teacher:["Today's attendance","My class students","Class marks","Latest circular","Where are the vans?"],
+    principal:["Today's attendance","Fee overview","Fee defaulters","Attendance last week","Where are the vans?"],
+    correspondent:["Today's attendance","Fee overview","Fee defaulters","Attendance last week"],
+    admin:["Fee overview","WhatsApp outbox","Today's attendance","Where are the vans?"]}[S.role];
+  v.innerHTML=`<div class="chat"><h2 class="h">Ask SPV</h2><div class="log" id="log"></div><div class="chips" id="chips"></div>
+    <form class="f" id="cf" style="grid-template-columns:1fr auto"><input id="cq" placeholder="Ask in English or తెలుగు…" maxlength="2000"><button class="btn btn-navy">Send</button></form></div>`;
+  const add=(t,c)=>{const d=document.createElement('div');d.className='bub '+c;d.textContent=t;$('log').appendChild(d);d.scrollIntoView({block:'end'});return d};
+  if(!S.chat.length)add(`Namaste! 🙏 I answer from the school's own records for your ${ROLE[S.role].n.toLowerCase()} login.`,'bot');
+  S.chat.forEach(m=>add(m.content,m.role==='user'?'me':'bot'));
+  chips.forEach(c=>{const b=document.createElement('button');b.type='button';b.textContent=c;b.onclick=()=>send(c);$('chips').appendChild(b)});
+  async function send(t){const m=(t??$('cq').value).trim();if(!m)return;$('cq').value='';add(m,'me');const w=add('Thinking…','bot');
+    try{const r=await post('/api/portal/chat',{message:m,history:S.chat.slice(-8)});w.textContent=r.reply;S.chat.push({role:'user',content:m},{role:'assistant',content:r.reply})}catch(e){w.textContent=e.message}}
+  $('cf').onsubmit=e=>{e.preventDefault();send()};
+}
+};
+
+async function studentDetail(id){
+  const v=$('view'),s=await api('/api/portal/student/'+encodeURIComponent(id)),a=s.attendance;
+  const exams=Object.keys(s.marks||{}),subs=exams.length?Object.keys(s.marks[exams[0]]):[];
+  v.innerHTML=`<button class="btn btn-line btn-sm" id="bk">← Back</button><h2 class="h" style="margin-top:12px">${esc(s.name)}</h2>
+    <div class="card"><div class="kv"><span>Class</span><b>${s.class}-${esc(s.section)} · ${esc(s.id)}</b></div><div class="kv"><span>Parent</span><b>${esc(s.parent)} · <a href="tel:${esc(s.phone)}">${esc(s.phone)}</a></b></div>
+      <div class="kv"><span>Attendance</span><b>${a.pct??'—'}${a.pct!=null?'%':''} (${a.present}/${a.days})</b></div><div class="kv"><span>Fees</span><b>${rs(s.fee_paid)} paid · ${rs(s.balance)} pending ${s.fee_flag?'<span class="chip warn">reminder</span>':''}</b></div></div>
+    ${exams.length?`<div class="card scroll"><table><tr><th>Subject</th>${exams.map(e=>`<th class="n">${esc(e)}</th>`).join('')}</tr>${subs.map(x=>`<tr><td>${esc(x)}</td>${exams.map(e=>`<td class="n">${s.marks[e][x]??''}</td>`).join('')}</tr>`).join('')}</table></div>`:''}
+    ${s.payments.length?`<div class="card"><b>Payments</b>${s.payments.map(p=>`<div class="kv"><span>${esc(p.date)}</span><b>${rs(p.amount)}</b></div>`).join('')}</div>`:''}`;
+  $('bk').onclick=()=>show(S.tab);
 }
 function ago(s){return s<60?'just now':s<3600?Math.floor(s/60)+' min ago':Math.floor(s/3600)+' h ago'}
-async function loadVans(){
-  let d;try{const r=await fetch('/api/van/latest',{cache:'no-store'});if(!r.ok)throw 0;d=await r.json()}catch{$('vanList').innerHTML='<p class="wait">Could not load van location.</p>';return}
-  const list=$('vanList');list.innerHTML='<div class="sec">School vans · updates every 10 s</div>';
-  if(!d.vans.length){list.insertAdjacentHTML('beforeend','<p class="wait">No van location yet. The driver\'s GPS app has not sent a position.</p>')}
-  if(layer)layer.clearLayers();const pts=[];
-  d.vans.forEach(v=>{
-    const row=document.createElement('div');row.className='van';row.innerHTML='<span class="dot"></span><div><b></b><small></small></div>';
-    row.querySelector('.dot').classList.toggle('live',v.live);row.querySelector('b').textContent=v.name;
-    row.querySelector('small').textContent=(v.live?((v.kmh||0)>3?`Moving · ${Math.round(v.kmh)} km/h`:'Stopped'):'Offline')+' · '+ago(v.age_s)+(v.battery!=null?` · 🔋${v.battery}%`:'');
-    row.onclick=()=>map&&map.setView([v.lat,v.lon],16);list.appendChild(row);
-    if(layer){if(v.trail&&v.trail.length>1)L.polyline(v.trail.map(t=>[t[0],t[1]]),{color:'#f2a900',weight:4,opacity:.8}).addTo(layer);
-      L.marker([v.lat,v.lon],{icon:L.divIcon({className:'',html:`<div class="van-pin">🚐 ${v.name.replace(/[<>&]/g,'')}</div>`,iconAnchor:[30,12]})}).addTo(layer);pts.push([v.lat,v.lon])}
-  });
-  if(map&&pts.length&&!fitted){map.fitBounds(pts,{maxZoom:16,padding:[40,40]});fitted=true}
-  if(d.storage==='memory')list.insertAdjacentHTML('beforeend','<p class="wait" style="font-size:.75rem">Setup note: van storage is not connected yet, so positions may disappear.</p>');
-}
+function loadLeaflet(){if(window.L)return Promise.resolve();return new Promise(ok=>{const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';document.head.appendChild(l);
+  const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';s.onload=ok;s.onerror=ok;document.head.appendChild(s);setTimeout(ok,6000)})}
 
-// home
-async function loadHome(){
-  const r=ROLES[role];
-  try{const res=await fetch('/api/app/home?role='+role);if(!res.ok)throw 0;homeData=await res.json()}
-  catch{$('homeBody').innerHTML='<p class="wait">Could not load. Check your internet and try again.</p>';return}
-  const d=homeData, el=$('homeBody');el.innerHTML='';
-  el.insertAdjacentHTML('beforeend',`<span class="badge">Demo data</span><h2 class="greet"></h2><div class="cards"></div><div class="sec">Quick actions</div><div class="actions"></div>`);
-  el.querySelector('.greet').textContent=r.hi;
-  d.cards.forEach(c=>{const x=document.createElement('div');x.className='card';x.innerHTML='<small></small><b></b>';x.children[0].textContent=c.label;x.children[1].textContent=c.value;el.querySelector('.cards').appendChild(x)});
-  r.chips.slice(0,4).forEach(c=>{const b=document.createElement('button');b.className='act';b.textContent=c.endsWith(': ')?(c==='notice: '?'📝 Draft a notice':'📖 '+c.slice(0,-2)):c;b.onclick=()=>chip(c);el.querySelector('.actions').appendChild(b)});
-  const w=document.createElement('div');w.className='word';w.innerHTML='<small>Word of the Day</small><h3></h3><p></p>';
-  w.querySelector('h3').textContent=`${d.word.word} · ${d.word.telugu}`;w.querySelector('p').textContent=d.word.meaning;el.appendChild(w);
-  const nb=$('noticeBody');nb.innerHTML='<div class="sec">School notices</div>';
-  d.notices.forEach(n=>{const x=document.createElement('div');x.className='notice';x.innerHTML='<small></small><b></b><p></p>';
-    x.children[0].textContent=n.date;x.children[1].textContent=n.title;x.children[2].textContent=n.text||'';nb.appendChild(x)});
-}
-
-// chat
-function addMsg(t,c){const d=document.createElement('div');d.className='msg '+c;d.textContent=t;$('log').appendChild(d);$('log').scrollTop=$('log').scrollHeight;return d}
-function chip(c){show('ask');if(c.endsWith(': ')){$('q').value=c==='notice: '?'notice: ':'';$('q').placeholder=c==='notice: '?'notice: title. details…':'Paste the chapter text here…';$('q').focus()}else send(c)}
-async function send(text){
-  const message=(text??$('q').value).trim();if(!message||busy)return;
-  $('q').value='';$('q').style.height='';busy=true;$('send').disabled=true;addMsg(message,'me');const w=addMsg('Thinking…','bot wait');
-  try{const res=await fetch('/api/app/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({role,message,history:history.slice(-10)})});
-    if(!res.ok)throw 0;const {reply}=await res.json();w.remove();addMsg(reply,'bot');
-    history.push({role:'user',content:message},{role:'assistant',content:reply});
-  }catch{w.remove();addMsg('Sorry, I could not connect. Please check your internet and try again.','bot')}
-  busy=false;$('send').disabled=false;
-}
-$('f').onsubmit=e=>{e.preventDefault();send()};
-$('q').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});
-$('q').addEventListener('input',e=>{e.target.style.height='';e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'});
-
-// install (Android/desktop prompt, iOS hint)
-let deferred=null;
-window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('installBtn').style.display='block'});
-$('installBtn').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('installBtn').style.display='none'};
-const standalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone;
-if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!standalone)$('iosTip').style.display='block';
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js',{scope:'/app/'}).catch(()=>{});
-
-// remember last role
-const saved=store.get('spv-role');if(saved&&ROLES[saved])enter(saved);
+if(S.token&&S.role)enter(S.role);
 </script>
 </body>
 </html>

@@ -4,5 +4,8 @@ fastapi
 uvicorn
 httpx
 python-dotenv
+pg8000
+openpyxl
+pytest
 # optional, only for LLM_PROVIDER=azure:
 # langchain-azure-ai
