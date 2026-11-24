@@ -87,11 +87,13 @@ def _seed_attendance_history(students_, days):
     by_class = {}
     for s in students_:
         by_class.setdefault(s["class"], []).append(s)
+    batch = {}
     for d in school_days(days + 1)[1:]:
         for cls, kids in by_class.items():
             marks = {k["id"]: ("A" if rnd.random() < 0.07 else "P") for k in kids}
-            store.set(f"att:{d}:{cls}", {"date": d, "class": cls, "marks": marks, "by": "seed",
-                                         "by_name": "Test data", "at": 0, "notified": []})
+            batch[f"att:{d}:{cls}"] = {"date": d, "class": cls, "marks": marks, "by": "seed",
+                                       "by_name": "Test data", "at": 0, "notified": []}
+    store.set_many(batch)  # one database round trip
 
 
 # ---------------------------------------------------------------- people

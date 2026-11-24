@@ -170,6 +170,29 @@ def set(key: str, value, ttl: int | None = None):  # noqa: A001 - mirrors Redis 
             _fsave(d)
 
 
+def set_many(items: dict):
+    """Write many keys in one round trip (used when loading data)."""
+    if not items:
+        return
+    b = backend()
+    if b == "postgres":
+        keys = [PREFIX + k for k in items]
+        vals = [json.dumps(v, ensure_ascii=False) for v in items.values()]
+        _pg_run("""INSERT INTO spv_kv (k, v, updated_at)
+                   SELECT k, CAST(v AS JSONB), now() FROM unnest(CAST(:ks AS TEXT[]), CAST(:vs AS TEXT[])) AS t(k, v)
+                   ON CONFLICT (k) DO UPDATE SET v = EXCLUDED.v, updated_at = now()""", ks=keys, vs=vals)
+    elif b == "redis":
+        flat = []
+        for k, v in items.items():
+            flat += [PREFIX + k, json.dumps(v, ensure_ascii=False)]
+        _r("MSET", *flat)
+    else:
+        with _lock:
+            d = _fload()
+            d.update({PREFIX + k: v for k, v in items.items()})
+            _fsave(d)
+
+
 def delete(key: str):
     k = PREFIX + key
     b = backend()
