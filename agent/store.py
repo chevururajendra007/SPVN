@@ -284,7 +284,7 @@ def ensure_ready():
 def health() -> dict:
     try:
         b = backend()
-        get("health-check")
+        get("meta")  # an encrypted record: proves the database is reachable AND DATA_KEY decrypts it
         return {"backend": b, "ok": True, "durable": durable(), "encrypted": encryption_on()}
     except Exception as e:  # surfaced on the admin status card
         return {"backend": "none", "ok": False, "error": type(e).__name__, "durable": False,
