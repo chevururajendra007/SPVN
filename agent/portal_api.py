@@ -63,8 +63,18 @@ def verify(body: VerifyIn):
 
 
 @router.get("/api/portal/status")
+def public_status():
+    """Public health check: says only whether the service works (no setup details)."""
+    return {"ok": store.health()["ok"]}
+
+
 def status():
-    return {"storage": store.health(), "otp_dev_mode": auth.dev_mode(),
+    h = store.health()
+    try:
+        h |= store.tls_status()
+    except Exception:
+        h["tls"] = False
+    return {"storage": h, "otp_dev_mode": auth.dev_mode(),
             "whatsapp": "api" if notify.api_ready() else "one-tap", "jwt": bool(os.getenv("JWT_SECRET")),
             "van_key": bool(os.getenv("VAN_KEY"))}
 
@@ -72,8 +82,11 @@ def status():
 @router.get("/api/portal/me")
 def me(authorization: str = Header(None), x_role: str = Header(None)):
     c = ctx(authorization, x_role, ("parent", "teacher") + MGMT)
-    return {"phone": c["phone"], "active": {k: c[k] for k in ("role", "name") if k in c} | {"class": c.get("class")},
-            "roles": auth.roles_for(c["phone"]), "status": status()}
+    out = {"phone": c["phone"], "active": {k: c[k] for k in ("role", "name") if k in c} | {"class": c.get("class")},
+           "roles": auth.roles_for(c["phone"])}
+    st = status()
+    out["status"] = st if c["role"] in MGMT else {"storage": {"durable": st["storage"]["durable"]}}
+    return out
 
 
 # ---------------------------------------------------------------- parent

@@ -49,7 +49,7 @@ def client(tmp_path_factory):
         "SPV_STORE_FILE": str(tmp_path_factory.mktemp("db") / "store.json"),
         "OTP_DEV_MODE": "true", "JWT_SECRET": "test-secret", "PRINCIPAL_PHONES": PRINCIPAL,
         "ADMIN_PHONES": PRINCIPAL, "CORRESPONDENT_PHONES": PRINCIPAL, "VAN_KEY": "vankey", "CRON_SECRET": "cron",
-        "LLM_PROVIDER": "offline",
+        "LLM_PROVIDER": "offline", "DATA_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
         "SEED_DATA": base64.b64encode(gzip.compress(Path(SEED).read_bytes())).decode()})
     for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID"):
         os.environ.pop(k, None)

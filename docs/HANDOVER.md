@@ -33,7 +33,8 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 ## Settings (Vercel → spvn → Settings → Environment Variables)
 | Name | Purpose |
 |---|---|
-| `DATABASE_URL` | Neon Postgres. **Required before real use.** Added by connecting Neon (Storage tab) |
+| `DATABASE_URL` | Vercel Neon Postgres (added by the Neon integration). **Required: the app will not run without it** |
+| `DATA_KEY` | encrypts every stored record (AES-256-GCM). **Never lose or change it** (see SECURITY.md) |
 | `JWT_SECRET` | signs login sessions (random, never share) |
 | `OTP_DEV_MODE` | `true` shows the OTP on screen for testing. **Set to `false` before parents use it** |
 | `PRINCIPAL_PHONES`, `CORRESPONDENT_PHONES`, `ADMIN_PHONES` | comma-separated numbers (more can be added in Team & data) |
@@ -50,12 +51,12 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 - [x] No personal data in the public GitHub repo
 - [x] Audit log of logins and every change (`audit` key)
 - [ ] Turn off `OTP_DEV_MODE` and connect WhatsApp OTP before real parents log in
-- [ ] Connect Neon Postgres (until then data is not saved reliably)
+- [x] Vercel Neon Postgres only, TLS verified, every record encrypted in the app (`docs/SECURITY.md`)
 
 ## Runbook
 | Problem | Check | Fix |
 |---|---|---|
-| Red "database is not connected" banner | Team & data → System status | Connect Neon to the project, redeploy |
+| "Database not connected" | Team & data → System status | Check the Neon integration on the project and `DATA_KEY`; redeploy |
 | Parent says "number not registered" | Search the child; check the parent mobile | Fix the number in Excel and re-import |
 | WhatsApp not arriving | WhatsApp tab: status `failed`/`queued` | Check token/templates; meanwhile use one-tap send |
 | Van not moving on map | Bus routes: "No GPS yet"/"Offline" | Phone: Traccar service on, location "Allow all the time", battery saver off |
@@ -63,4 +64,4 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | Need to roll back | Vercel → Deployments | Promote the previous deployment |
 
 ## Test
-`SPV_SEED=<seed.json> python -m pytest tests -q` (17 tests; add `DATABASE_URL` to run them on Postgres).
+`SPV_SEED=<seed.json> python -m pytest tests -q` (portal + security tests; add `DATABASE_URL` and `SECURITY_PG` to run them on Postgres).

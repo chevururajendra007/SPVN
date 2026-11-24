@@ -3,5 +3,6 @@ fastapi
 python-dotenv
 pg8000          # Postgres (Neon) - pure Python driver
 openpyxl        # Excel import in the admin portal
+cryptography    # AES-256-GCM encryption of stored data
 langchain-core
 langchain-ollama

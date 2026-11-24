@@ -260,7 +260,7 @@ function show(t){S.tab=t;clearInterval(S.timer);map=null;
   (VIEWS[t]||(()=>v.innerHTML=''))(v).catch(e=>v.innerHTML=`<div class="banner bad">${esc(e.message)}</div>`)}
 
 function statusBanners(){const s=S.me.status,out=[];
-  if(!s.storage.durable)out.push('<div class="banner bad"><b>Setup needed:</b> the database is not connected yet, so saved data can disappear. Connect Neon Postgres in Vercel → Storage.</div>');
+  if(s.storage&&s.storage.durable===false)out.push('<div class="banner bad"><b>Database not connected.</b> Please contact the school office.</div>');
   return out.join('')}
 function bars(rows){return `<div class="bars">${rows.map(r=>r.v==null?`<div class="bar nm"><span>${esc(r.l)}</span><div class="tr"></div><span class="v">${esc(r.na||'—')}</span></div>`:
   `<div class="bar" title="${esc(r.l)}: ${r.v}%${r.t?' · '+esc(r.t):''}"><span>${esc(r.l)}</span><div class="tr"><div class="fl" style="width:${Math.max(2,r.v)}%"></div></div><span class="v">${r.v}%</span></div>`).join('')}</div>`}
@@ -447,7 +447,9 @@ async team(v){
   const d=await api('/api/portal/team'),st=S.me.status;
   v.innerHTML=`<h2 class="h">Team & data</h2>
     <div class="card"><b>System status</b>
-      <div class="kv"><span>Database</span><span>${st.storage.backend==='postgres'?'<span class="chip good">Postgres (Neon)</span>':st.storage.durable?'<span class="chip good">'+esc(st.storage.backend)+'</span>':'<span class="chip bad">Not connected – data can be lost</span>'}</span></div>
+      <div class="kv"><span>Database</span><span>${st.storage.backend==='postgres'&&st.storage.ok?'<span class="chip good">Vercel Neon Postgres</span>':'<span class="chip bad">Not connected</span>'}</span></div>
+      <div class="kv"><span>Connection</span><span>${st.storage.tls?'<span class="chip good">TLS '+esc(st.storage.version||'')+' · certificate verified</span>':'<span class="chip bad">Not encrypted</span>'}</span></div>
+      <div class="kv"><span>Stored data</span><span>${st.storage.encrypted?'<span class="chip good">Encrypted (AES-256-GCM)</span>':'<span class="chip warn">Not encrypted in app</span>'}</span></div>
       <div class="kv"><span>Login OTP</span><span>${st.otp_dev_mode?'<span class="chip warn">Testing mode (code on screen)</span>':'<span class="chip good">Sent to phone</span>'}</span></div>
       <div class="kv"><span>WhatsApp</span><span>${st.whatsapp==='api'?'<span class="chip good">Automatic</span>':'<span class="chip warn">One-tap (manual)</span>'}</span></div>
       <div class="kv"><span>Van GPS key</span><span>${st.van_key?'<span class="chip good">Set</span>':'<span class="chip bad">Missing</span>'}</span></div>

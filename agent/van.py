@@ -8,7 +8,7 @@ Settings (Vercel -> Project -> Settings -> Environment Variables):
 Which phone belongs to which route: set the Traccar "Device identifier" on each route in the portal
 (Principal/Admin -> Bus routes). Unknown devices are accepted only while no route has a device id,
 so a first test works before setup.
-Positions are stored with store.py (Postgres / Redis), so they survive between serverless calls.
+Positions are stored (encrypted) in the Vercel Neon Postgres database via store.py.
 """
 import hmac
 import json
