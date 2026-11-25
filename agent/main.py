@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from agent import PROVIDER, chat
-from portal_api import router as portal_router
+from portal_api import install as install_portal, router as portal_router
 from van import router as van_router
 
 app = FastAPI(title="Ask SPV")
@@ -24,6 +24,7 @@ def api_chat(body: ChatIn):
     return {"reply": chat(body.message, body.history)}
 
 
+install_portal(app)  # device + IP facts for the admin office-only check
 app.include_router(portal_router)  # SPV portal: /api/auth/*, /api/portal/*
 app.include_router(van_router)  # school van GPS: /api/van/loc/<key>
 

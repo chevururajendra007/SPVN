@@ -72,8 +72,26 @@ def login(client, phone, role=None):
     assert r.status_code == 200, r.text
     v = client.post("/api/auth/verify", json={"phone": phone, "code": r.json()["dev_code"]}).json()
     roles = [x["role"] for x in v["roles"]]
-    h = {"Authorization": f"Bearer {v['token']}", "X-Role": role or roles[0]}
+    h = {"Authorization": f"Bearer {v['token']}", "X-Role": role or roles[0], "X-Device": OFFICE_DEVICE}
+    if (role or roles[0]) == "admin":
+        _approve_device(client, h, phone)
     return h, roles
+
+
+OFFICE_DEVICE = "office-pc-" + "a" * 30
+
+
+def _approve_device(client, admin_headers, phone):
+    """First admin call from a device registers it as pending; the principal approves it once."""
+    if client.get("/api/portal/team", headers=admin_headers).status_code == 200:
+        return
+    import auth
+    store_devices = __import__("store").get("devices", []) or []
+    dev_id = auth.device_ref(admin_headers["X-Device"], phone)
+    assert any(d["id"] == dev_id and d["status"] == "pending" for d in store_devices)
+    p, _ = login(client, PRINCIPAL, "principal")
+    assert client.post(f"/api/portal/devices/{dev_id}/approve", headers=p).status_code == 200
+    assert client.get("/api/portal/team", headers=admin_headers).status_code == 200
 
 
 def test_unknown_number_cannot_login(client):
@@ -290,7 +308,8 @@ def test_teacher_fee_reminder_own_class_once_a_day(client):
     r = client.post(f"/api/portal/fees/remind/{KID_D['id']}", headers=t)
     assert r.status_code in (200, 400)  # 400 if this child's fee was already paid or reminded today
     if r.status_code == 200:
-        assert r.json()["status"] == "queued" and "fee reminder" in r.json()["link"].lower().replace("%20", " ")
+        assert r.json()["status"] == "queued" and "fee is pending" in r.json()["link"].lower().replace("%20", " ")
+        assert "Rs" not in r.json()["link"]
         assert client.post(f"/api/portal/fees/remind/{KID_D['id']}", headers=t).status_code == 400
     assert client.post(f"/api/portal/fees/remind/{KID_O['id']}", headers=t).status_code == 400  # other class
 
@@ -347,3 +366,60 @@ def test_lesson_summary_with_ai(client, monkeypatch):
     img = "data:image/jpeg;base64," + base64.b64encode(b"x" * 100).decode()
     r = client.post("/api/portal/lessons/summarize", headers=t, json={"subject": "Science", "images": [img, img]}).json()
     assert r["source"] == "ai" and seen["n"] == 2 and r["summary"].startswith("TITLE: Water cycle")
+
+
+def test_fee_amounts_only_for_principal_and_admin(client):
+    c, _ = login(client, PRINCIPAL, "correspondent")
+    assert client.get("/api/portal/dashboard", headers=c).status_code == 403
+    assert client.get("/api/portal/fees/entries", headers=c).status_code == 403
+    hit = client.get(f"/api/portal/search?q={KID_O['id']}", headers=c).json()["results"][0]
+    assert "balance" not in hit and "fee_total" not in hit
+    assert "fee_total" not in client.get(f"/api/portal/student/{KID_O['id']}", headers=c).json()
+    assert "Rs." not in client.post("/api/portal/chat", headers=c, json={"message": f"search {KID_O['id']}"}).json()["reply"]
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    kids = client.get("/api/portal/class", headers=t).json()["students"]
+    assert all("balance" not in k and "fee_total" not in k and "fee_due" in k for k in kids)
+    assert all(m["kind"] != "fee" for m in client.get("/api/portal/outbox", headers=t).json()["items"])
+    p, _ = login(client, PRINCIPAL, "principal")
+    assert "balance" in client.get(f"/api/portal/search?q={KID_O['id']}", headers=p).json()["results"][0]
+    a, _ = login(client, DUAL_PHONE, "admin")
+    assert client.get("/api/portal/dashboard", headers=a).status_code == 200
+    k, _ = login(client, DUAL_PHONE, "parent")
+    assert "fee_total" in client.get("/api/portal/parent", headers=k).json()["children"][0]  # own child's fees
+
+
+def test_teacher_reminder_has_no_amount():
+    import school
+    s = {"name": "Ravi", "class": 4, "fee_total": 20000, "fee_paid": 5000}
+    assert "Rs" not in school.fee_note(s) and "pending" in school.fee_note(s)
+
+
+def test_admin_only_from_approved_office_device(client, monkeypatch):
+    a, _ = login(client, DUAL_PHONE, "admin")          # this device was approved by the principal
+    other = dict(a, **{"X-Device": "home-phone-" + "b" * 30})
+    r = client.get("/api/portal/team", headers=other)
+    assert r.status_code == 403 and "not yet approved" in r.json()["detail"]
+    assert client.get("/api/portal/team", headers=dict(a, **{"X-Device": ""})).status_code == 403
+    import auth, store
+    dev = auth.device_ref(other["X-Device"], DUAL_PHONE)
+    p, _ = login(client, PRINCIPAL, "principal")
+    listed = client.get("/api/portal/devices", headers=p).json()["items"]
+    assert any(d["id"] == dev and d["status"] == "pending" and "h" not in d for d in listed)
+    assert client.get("/api/portal/devices", headers=a).status_code == 403   # admin cannot approve itself
+    mine = auth.device_ref(a["X-Device"], DUAL_PHONE)
+    rv = client.post(f"/api/portal/devices/{mine}/revoke", headers=p)
+    assert rv.status_code == 200, rv.text
+    assert "removed" in client.get("/api/portal/team", headers=a).json()["detail"]
+    client.post(f"/api/portal/devices/{mine}/approve", headers=p)
+    assert client.get("/api/portal/team", headers=a).status_code == 200
+    # other roles are not tied to a device
+    k, _ = login(client, DUAL_PHONE, "parent")
+    assert client.get("/api/portal/parent", headers=dict(k, **{"X-Device": ""})).status_code == 200
+
+
+def test_admin_only_from_office_internet(client, monkeypatch):
+    a, _ = login(client, DUAL_PHONE, "admin")
+    monkeypatch.setenv("OFFICE_IPS", "49.204.10.0/24")
+    assert client.get("/api/portal/team", headers=dict(a, **{"X-Forwarded-For": "49.204.10.25"})).status_code == 200
+    r = client.get("/api/portal/team", headers=dict(a, **{"X-Forwarded-For": "106.200.1.9"}))
+    assert r.status_code == 403 and "office internet" in r.json()["detail"]

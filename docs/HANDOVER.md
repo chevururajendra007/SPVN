@@ -40,6 +40,8 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | Admin fee entry is pending until a principal/super admin approves; only approved money counts | `school.submit_fee_entry`, `decide_fee_entry` |
 | Admin is write-only: no role changes, deletes, route edits, imports or attendance edits | `portal_api` permissions |
 | Only a super admin assigns or removes roles | `portal_api.add_member/remove_member` |
+| Fee amounts + dashboards only for principal/super admin/admin; teachers and correspondent get none | `portal_api.FEE_ROLES`, `school.card(fees=False)` |
+| Admin works only on principal-approved office devices (+ optional OFFICE_IPS, OFFICE_HOURS) | `auth.office_check` |
 | Parent sees only children whose record has their mobile number | `school.children`, `portal_api` |
 | Test numbers starting with 5 are never messaged | `notify._valid` |
 
@@ -51,6 +53,8 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | `JWT_SECRET` | signs login sessions (random, never share) |
 | `OTP_DEV_MODE` | `true` shows the OTP on screen for testing. **Set to `false` before parents use it** |
 | `SUPERADMIN_PHONES`, `PRINCIPAL_PHONES`, `CORRESPONDENT_PHONES`, `ADMIN_PHONES` | comma-separated numbers (a super admin can assign more in Roles & data) |
+| `ADMIN_DEVICE_APPROVAL` | `true` (default): admin only on approved office devices |
+| `OFFICE_IPS`, `OFFICE_HOURS` | optional: admin only from the office IP / in office hours |
 | `WA_TPL_OTP`, `OTP_CHANNEL` | login OTP on WhatsApp (default `whatsapp`; `sms`/`both` with `FAST2SMS_API_KEY`, `FAST2SMS_OTP_ID`) |
 | `WA_TPL_DEFAULT` | WhatsApp utility template used for all school messages |
 | `AI_GATEWAY_API_KEY` (optional), `LESSON_MODEL` | lesson scan AI; without a key the Vercel OIDC token is used |

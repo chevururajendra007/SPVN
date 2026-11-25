@@ -148,9 +148,10 @@ def make_skills(ctx: dict) -> list:
 
     def search_students(query: str) -> str:
         """Search all students by name, admission no, parent or phone."""
-        hits = school.search(query, school.students())
-        return "\n".join(f"{h['name']} ({h['id']}), Class {h['class']} - parent {h['parent']} {h['phone']}, "
-                         f"fee balance {_rupees(h['balance'])}" for h in hits) or "No students found."
+        fees = role in ("superadmin", "principal", "admin")  # only these roles may see fee amounts
+        hits = school.search(query, school.students(), fees)
+        return "\n".join(f"{h['name']} ({h['id']}), Class {h['class']} - parent {h['parent']} {h['phone']}"
+                         + (f", fee balance {_rupees(h['balance'])}" if fees else "") for h in hits) or "No students found."
 
     def attendance_last_week() -> str:
         """School attendance % for the last 7 school days."""
@@ -195,8 +196,7 @@ def make_skills(ctx: dict) -> list:
                     practical_this_week],
         "principal": [attendance_today, attendance_last_week, fee_overview, fee_collection, fee_defaulters,
                       search_students, staff_circulars, all_vans, practical_this_week],
-        "correspondent": [attendance_today, attendance_last_week, fee_overview, fee_collection, fee_defaulters,
-                          search_students, all_vans, practical_this_week],
+        "correspondent": [attendance_today, attendance_last_week, search_students, all_vans, practical_this_week],
         "admin": [attendance_today, fee_overview, fee_collection, fee_defaulters, search_students, staff_circulars,
                   all_vans, message_outbox],
     }

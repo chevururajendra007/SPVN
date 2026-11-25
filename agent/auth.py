@@ -16,8 +16,10 @@ Delivery: SMS (Fast2SMS) or WhatsApp Cloud API (notify.py) when configured. OTP_
 for testing - that gives NO real protection and must be switched off before parents use the app.
 """
 import base64
+import contextvars
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -28,6 +30,9 @@ import notify
 import store
 
 TOKEN_DAYS = 90
+# Per-request facts set by the API middleware (portal_api.install): device id, device label, client IP.
+REQUEST: contextvars.ContextVar = contextvars.ContextVar("spv_request", default={})
+IST_OFFSET = 5.5 * 3600
 MGMT_ROLES = ("superadmin", "principal", "correspondent", "admin")
 ROLE_ORDER = ("superadmin", "principal", "correspondent", "admin", "teacher", "parent")
 
@@ -180,7 +185,87 @@ def session(token: str, role: str | None) -> dict:
     pick = next((r for r in roles if r["role"] == role), None) if role else roles[0]
     if not pick:
         raise AuthError("You do not have access to this section.", 403)
+    office_check(phone, pick["role"])
     return dict(pick, phone=phone, all_roles=[r["role"] for r in roles])
+
+
+# ---------------------------------------------------------------- admin: office only
+def device_hash(device_id: str) -> str:
+    return hashlib.sha256(("spv-device:" + device_id).encode()).hexdigest()
+
+
+def device_ref(device_id: str, phone: str) -> str:
+    """Short public id of one (device, admin number) pair, shown to the principal."""
+    return hashlib.sha256((device_hash(device_id) + phone).encode()).hexdigest()[:12]
+
+
+def _client_ip() -> str:
+    return REQUEST.get().get("ip", "")
+
+
+def _in_office_network(ip: str) -> bool:
+    nets = [n.strip() for n in os.getenv("OFFICE_IPS", "").split(",") if n.strip()]
+    if not nets:
+        return True  # IP lock not switched on
+    try:
+        addr = ipaddress.ip_address(ip)
+        return any(addr in ipaddress.ip_network(n, strict=False) for n in nets)
+    except ValueError:
+        return False
+
+
+def _in_office_hours() -> bool:
+    """OFFICE_HOURS like '08:00-18:00' (IST, Monday-Saturday). Empty = any time."""
+    rng = os.getenv("OFFICE_HOURS", "").strip()
+    if not rng:
+        return True
+    t = time.gmtime(time.time() + IST_OFFSET)
+    start, end = [int(x[:2]) * 60 + int(x[3:5]) for x in rng.split("-")]
+    return t.tm_wday != 6 and start <= t.tm_hour * 60 + t.tm_min <= end
+
+
+def office_check(phone: str, role: str):
+    """The admin role works only from the school office:
+       1. an office device approved by the principal (ADMIN_DEVICE_APPROVAL, on by default)
+       2. optional: the office internet connection only (OFFICE_IPS, e.g. '49.204.10.20' or a range)
+       3. optional: office hours only (OFFICE_HOURS, e.g. '08:00-18:00', Mon-Sat IST)"""
+    if role != "admin":
+        return
+    if not _in_office_network(_client_ip()):
+        raise AuthError("Admin access is allowed only from the school office internet connection.", 403)
+    if not _in_office_hours():
+        raise AuthError(f"Admin access is allowed only in office hours ({os.getenv('OFFICE_HOURS')}, Mon-Sat).", 403)
+    if os.getenv("ADMIN_DEVICE_APPROVAL", "true").lower() in ("0", "false", "no"):
+        return
+    req = REQUEST.get()
+    dev = req.get("device", "")
+    if len(dev) < 20:
+        raise AuthError("Admin access works only on an approved office device.", 403)
+    h = device_hash(dev)
+    devices = store.get("devices", []) or []
+    rec = next((d for d in devices if d["h"] == h and d["phone"] == phone), None)
+    if rec and rec["status"] == "approved":
+        return
+    if not rec:
+        devices.insert(0, {"id": device_ref(dev, phone), "h": h, "phone": phone, "label": req.get("label", "")[:80],
+                           "ip": _client_ip(), "at": int(time.time()), "status": "pending"})
+        store.set("devices", devices[:200])
+        audit(phone, "admin_device_request", {"device": device_ref(dev, phone)})
+    if rec and rec["status"] == "revoked":
+        raise AuthError("This device was removed from admin access. Please use the office device.", 403)
+    raise AuthError("This device is not yet approved for admin work. Ask the principal to approve it "
+                    "(Roles & data > Admin office devices), then try again.", 403)
+
+
+def decide_device(dev_id: str, approve: bool, by_phone: str) -> dict:
+    devices = store.get("devices", []) or []
+    rec = next((d for d in devices if d["id"] == dev_id), None)
+    if not rec:
+        raise AuthError("Device not found", 404)
+    rec.update(status="approved" if approve else "revoked", by=by_phone, decided_at=int(time.time()))
+    store.set("devices", devices)
+    audit(by_phone, "device_" + rec["status"], {"device": dev_id, "admin": rec["phone"]})
+    return {k: v for k, v in rec.items() if k != "h"}
 
 
 def audit(phone, action, detail=None):

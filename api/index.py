@@ -13,10 +13,11 @@ from fastapi import FastAPI  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 from agent import PROVIDER, chat  # noqa: E402
-from portal_api import router as portal_router  # noqa: E402
+from portal_api import install as install_portal, router as portal_router  # noqa: E402
 from van import router as van_router  # noqa: E402
 
 app = FastAPI(title="SPV School")
+install_portal(app)  # device + IP facts for the admin office-only check
 app.include_router(portal_router)
 app.include_router(van_router)
 

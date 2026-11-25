@@ -8,7 +8,10 @@ Permissions (least privilege):
   principal      everything except assigning roles; approves fee entries
   correspondent  read dashboards, fees, search, routes; circulars and reminders
   admin          WRITE-ONLY: enters fees (pending approval), posts updates/circulars, sends reminders;
-                 cannot change or delete existing records, routes, roles or imported data
+                 cannot change or delete existing records, routes, roles or imported data.
+                 Works only from the office: approved office device (+ optional office IP / hours).
+  Fee amounts and dashboards: ONLY superadmin, principal and admin (FEE_ROLES). Teachers and the
+  correspondent never receive amounts; parents see only their own children's fees.
   teacher        own class only;  parent: own children only
 """
 import os
@@ -29,6 +32,19 @@ router = APIRouter()
 MGMT = ("superadmin", "principal", "correspondent", "admin")
 APPROVERS = ("superadmin", "principal")   # may change/approve existing records
 ALL = ("parent", "teacher") + MGMT
+FEE_ROLES = ("superadmin", "principal", "admin")   # may see fee amounts and dashboards
+
+
+def install(app):
+    """Middleware: record device id, device label and client IP for this request (used by auth.office_check)."""
+    @app.middleware("http")
+    async def _request_facts(request: Request, call_next):
+        fwd = request.headers.get("x-forwarded-for", "")
+        ip = request.headers.get("x-real-ip") or (fwd.split(",")[0].strip() if fwd else "") or \
+            (request.client.host if request.client else "")
+        auth.REQUEST.set({"device": request.headers.get("x-device", "")[:100],
+                          "label": request.headers.get("x-device-label", "")[:80], "ip": ip})
+        return await call_next(request)
 
 
 def ctx(authorization: str | None, x_role: str | None, allow: tuple) -> dict:
@@ -140,7 +156,7 @@ def class_view(cls: int = 0, authorization: str = Header(None), x_role: str = He
     k = _class_for(c, cls)
     sheet = school.att_sheet(school.today(), k)
     return {"class": k, "date": school.today(), "teacher": (school.class_teacher(k) or {}).get("name"),
-            "students": [school.card(s) | {"today": (sheet or {}).get("marks", {}).get(s["id"])}
+            "students": [school.card(s, c["role"] in FEE_ROLES) | {"today": (sheet or {}).get("marks", {}).get(s["id"])}
                          for s in school.class_students(k)],
             "saved": bool(sheet), "homework": school.homework(k, 10), "lessons": lessons.notes(k, 10)}
 
@@ -175,7 +191,7 @@ def homework(body: HomeworkIn, authorization: str = Header(None), x_role: str = 
 # ---------------------------------------------------------------- management dashboards
 @router.get("/api/portal/dashboard")
 def dashboard(authorization: str = Header(None), x_role: str = Header(None)):
-    ctx(authorization, x_role, MGMT)
+    ctx(authorization, x_role, FEE_ROLES)
     classes = sorted({int(s["class"]) for s in school.students()})
     return {"attendance": school.attendance_summary(), "trend": school.attendance_trend(7),
             "fees": school.fee_summary(), "students": len(school.students()),
@@ -184,7 +200,7 @@ def dashboard(authorization: str = Header(None), x_role: str = Header(None)):
 
 @router.post("/api/portal/fees/remind")
 def fees_remind(authorization: str = Header(None), x_role: str = Header(None)):
-    c = ctx(authorization, x_role, MGMT)
+    c = ctx(authorization, x_role, FEE_ROLES)
     res = school.run_fee_reminders(by=c["phone"])
     auth.audit(c["phone"], "fee_reminders", {"count": res["count"]})
     return res
@@ -193,9 +209,10 @@ def fees_remind(authorization: str = Header(None), x_role: str = Header(None)):
 @router.post("/api/portal/fees/remind/{sid}")
 def fee_remind_one(sid: str, authorization: str = Header(None), x_role: str = Header(None)):
     """Class teacher (own class) or management sends one fee reminder to a parent now."""
-    c = ctx(authorization, x_role, ("teacher",) + MGMT)
+    c = ctx(authorization, x_role, ("teacher",) + FEE_ROLES)
     cls = c["class"] if c["role"] == "teacher" else None
-    res = _err(school.teacher_fee_reminder, sid, cls, c["phone"], c.get("name") or c["role"].title())
+    res = _err(school.teacher_fee_reminder, sid, cls, c["phone"], c.get("name") or c["role"].title(),
+               with_amount=c["role"] in FEE_ROLES)
     auth.audit(c["phone"], "fee_reminder", {"student": sid})
     return res
 
@@ -219,7 +236,7 @@ def fees_payment(body: PaymentIn, authorization: str = Header(None), x_role: str
 
 @router.get("/api/portal/fees/entries")
 def fee_entries(status: str = "", authorization: str = Header(None), x_role: str = Header(None)):
-    c = ctx(authorization, x_role, MGMT)
+    c = ctx(authorization, x_role, FEE_ROLES)
     items = school.fee_entries(status or None)
     if c["role"] == "admin":  # admin sees what they entered and its status
         items = [e for e in items if e["by"] == c["phone"]]
@@ -247,7 +264,8 @@ def search(q: str = "", authorization: str = Header(None), x_role: str = Header(
     c = ctx(authorization, x_role, ALL)
     scope = (school.children(c["phone"]) if c["role"] == "parent"
              else school.class_students(c["class"]) if c["role"] == "teacher" else school.students())
-    return {"results": school.search(q, scope), "scope": c["role"]}
+    fees = c["role"] in FEE_ROLES or c["role"] == "parent"  # a parent sees only own children anyway
+    return {"results": school.search(q, scope, fees), "scope": c["role"]}
 
 
 @router.get("/api/portal/student/{sid}")
@@ -258,7 +276,9 @@ def student(sid: str, authorization: str = Header(None), x_role: str = Header(No
                      or (c["role"] == "parent" and s["phone"] == c["phone"]))
     if not allowed:
         raise HTTPException(404, "Student not found")
-    return school.card(s) | {"attendance": school.student_attendance(s), "payments": s.get("payments", [])}
+    fees = c["role"] in FEE_ROLES or c["role"] == "parent"
+    return school.card(s, fees) | {"attendance": school.student_attendance(s),
+                                   "payments": s.get("payments", []) if fees else []}
 
 
 # ---------------------------------------------------------------- circulars (principal -> staff) and parent updates
@@ -299,6 +319,8 @@ def post_update(body: TextIn, authorization: str = Header(None), x_role: str = H
 def outbox(kind: str = "", authorization: str = Header(None), x_role: str = Header(None)):
     c = ctx(authorization, x_role, ("teacher",) + MGMT)
     items = store.get("outbox", []) or []
+    if c["role"] not in FEE_ROLES:  # fee reminders contain amounts
+        items = [m for m in items if m["kind"] != "fee"]
     if c["role"] == "teacher":  # a teacher sees only messages for their class's parents
         mine = {s["phone"] for s in school.class_students(c["class"])}
         items = [m for m in items if m["to"] in mine]
@@ -342,6 +364,26 @@ def save_route(rid: str, body: RouteIn, authorization: str = Header(None), x_rol
     r = _err(school.save_route, rid, body.device_id, body.driver, body.driver_phone)
     auth.audit(c["phone"], "route", {"route": rid})
     return r
+
+
+# ---------------------------------------------------------------- admin office devices
+@router.get("/api/portal/devices")
+def devices(authorization: str = Header(None), x_role: str = Header(None)):
+    ctx(authorization, x_role, APPROVERS)
+    return {"items": [{k: v for k, v in d.items() if k != "h"} for d in (store.get("devices", []) or [])],
+            "ip_lock": bool(os.getenv("OFFICE_IPS")), "hours": os.getenv("OFFICE_HOURS", ""),
+            "your_ip": auth.REQUEST.get().get("ip", "")}
+
+
+@router.post("/api/portal/devices/{dev_id}/{action}")
+def device_decide(dev_id: str, action: str, authorization: str = Header(None), x_role: str = Header(None)):
+    c = ctx(authorization, x_role, APPROVERS)
+    if action not in ("approve", "revoke"):
+        raise HTTPException(404, "Unknown action")
+    try:
+        return auth.decide_device(dev_id, action == "approve", c["phone"])
+    except auth.AuthError as e:
+        raise HTTPException(e.status, str(e))
 
 
 # ---------------------------------------------------------------- admin: team and data

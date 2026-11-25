@@ -10,6 +10,14 @@
 | Who can reach data | Only the portal API, after mobile + OTP login. Roles are checked on the server for every request; parents only ever get their own children. The public status page shows only "ok". |
 | Audit | Logins and every change are logged (`audit`). |
 
+## Fee data and the admin
+| Rule | How |
+|---|---|
+| Fee amounts and dashboards | Only the principal (and super admin) and the admin. Teachers and the correspondent never receive amounts from the server; a teacher sees only "fee reminder" (yes/no) and sends a reminder text without amounts. Parents see only their own children's fees. |
+| Admin works only from the office | The admin role needs an **office device approved by the principal** (Roles & data > Admin office devices). A new phone or computer shows as "pending" until approved; the principal can remove it any time. |
+| Optional: office internet only | `OFFICE_IPS` in Vercel (the office's public IP, e.g. `49.204.10.25`, or a range `49.204.10.0/24`). Ask the internet provider for a **static IP**; most home/office connections change IP. |
+| Optional: office hours only | `OFFICE_HOURS` in Vercel, e.g. `08:00-18:00` (Monday-Saturday, IST). |
+
 ## The one limit of the free setup
 A Neon database has a public internet address. It is protected by the password (only in Vercel), TLS and
 the app encryption above, but anyone on the internet can still *try* to connect. Stopping that needs paid

@@ -262,8 +262,14 @@ def daily_collection(days=7) -> dict:
     return {"today": by_day[today()], "days": list(by_day.values()), "receipts": receipts}
 
 
-def teacher_fee_reminder(sid, cls, by_phone, by_name) -> dict:
-    """A class teacher (or management) sends one fee reminder now. At most once a day per child."""
+def fee_note(s) -> str:
+    """Reminder without any amount (sent by class teachers, who do not see fee amounts)."""
+    return (f"Dear parent, school fee is pending for {s['name']} (Class {s['class']}). "
+            f"Kindly pay at the school office. Ignore if already paid.\n- {SCHOOL}, Kota")
+
+
+def teacher_fee_reminder(sid, cls, by_phone, by_name, with_amount=False) -> dict:
+    """A class teacher (no amounts) or the office (with amounts) sends one fee reminder now. Once a day per child."""
     s = student(sid)
     if not s or (cls is not None and int(s["class"]) != int(cls)):
         raise ValueError("Student not found in your class")
@@ -271,7 +277,8 @@ def teacher_fee_reminder(sid, cls, by_phone, by_name) -> dict:
         raise ValueError("No fee is pending for this student")
     if store.get(f"feerem:{sid}") == today():
         raise ValueError("A fee reminder was already sent to this parent today")
-    m = notify.send(s["phone"], fee_message(s), "fee", {"student": sid, "by": by_name})
+    text, kind = (fee_message(s), "fee") if with_amount else (fee_note(s), "fee_note")
+    m = notify.send(s["phone"], text, kind, {"student": sid, "by": by_name})
     store.set(f"feerem:{sid}", today())
     return {"student": sid, "name": s["name"], "status": m["status"], "link": m["link"], "id": m["id"]}
 
@@ -431,20 +438,25 @@ def updates_for(cls=None, limit=10) -> list[dict]:
 
 
 # ---------------------------------------------------------------- search & routes
-def search(q: str, scope: list[dict]) -> list[dict]:
+def search(q: str, scope: list[dict], fees: bool = True) -> list[dict]:
     q = (q or "").strip().lower()
     if not q:
         return []
     hits = [s for s in scope if q in s["name"].lower() or q in s["id"].lower() or q in s["phone"]
             or q in (s.get("parent") or "").lower() or q == f"class {s['class']}" or q == str(s["class"])]
-    return [card(s) for s in hits[:25]]
+    return [card(s, fees) for s in hits[:25]]
 
 
-def card(s) -> dict:
-    return {"id": s["id"], "sno": s.get("sno"), "name": s["name"], "class": s["class"], "section": s.get("section", "A"),
-            "parent": s["parent"], "phone": s["phone"], "route": s.get("route"),
-            "fee_total": s["fee_total"], "fee_paid": s["fee_paid"], "balance": balance(s),
-            "fee_flag": fee_flag(s), "marks": s.get("marks", {})}
+def card(s, fees: bool = True) -> dict:
+    """Student card. fees=False (teachers, correspondent) hides every amount; only 'fee_due' (yes/no)
+    remains so a class teacher can send a reminder without seeing money."""
+    c = {"id": s["id"], "sno": s.get("sno"), "name": s["name"], "class": s["class"], "section": s.get("section", "A"),
+         "parent": s["parent"], "phone": s["phone"], "route": s.get("route"), "marks": s.get("marks", {})}
+    if fees:
+        c |= {"fee_total": s["fee_total"], "fee_paid": s["fee_paid"], "balance": balance(s), "fee_flag": fee_flag(s)}
+    else:
+        c["fee_due"] = balance(s) > 0
+    return c
 
 
 def routes() -> list[dict]:
