@@ -34,17 +34,19 @@ Login with mobile number + OTP. One number can hold several roles (e.g. a teache
 | Role | Can do |
 |---|---|
 | Parent | Own children only: attendance, marks, fees + reminder, homework, updates, live van, Ask SPV |
-| Class teacher | Own class: mark attendance P/A (absent → WhatsApp to parent), post homework (→ parents), class list & marks, circulars, bus routes |
-| Principal | Dashboard (attendance + fees), fees list, payments, reminders, search, bus routes + live map, circulars to staff, parent updates, attendance for any class |
+| Class teacher | Own class: attendance P/A (absent → WhatsApp), fee reminder button, homework, lesson scan → summary to parents, weekly practical sessions, circulars, bus routes |
+| Principal | Dashboard (attendance, fees, daily collection, practicals), approves fee entries, reminders, search, bus routes + live map, circulars, parent updates, lesson scan, Excel import |
 | Correspondent | Dashboard, fees, search, bus routes, circulars |
-| Admin | Parent updates, WhatsApp outbox, fees, search, bus routes, team & logins, Excel import |
+| Super admin | Everything + assigns roles from the portal |
+| Admin (write-only) | Enters fees (go to principal for approval), parent updates, circulars, WhatsApp outbox, search |
 
 Code (class framework: Model + Harness = Agent):
 - `agent/store.py` Vercel Neon Postgres, TLS-verified, every record AES-256-GCM encrypted (local file only for laptop tests) · `agent/auth.py` OTP + roles
 - `agent/school.py` rules and data · `agent/notify.py` WhatsApp (Cloud API or one-tap wa.me)
 - `agent/skills.py` the agent's skills per role (identity bound on the server, read-only)
 - `agent/app_agent.py` Ask SPV loop for the portal · `agent/portal_api.py` routes · `agent/van.py` GPS receiver
-- `tests/test_portal.py` 17 evaluation tests · `scripts/make_test_data.py` builds the test workbook
+- `agent/lessons.py` lesson scan summaries · `agent/practicals.py` 40-week practical sessions plan
+- `tests/` portal + security evaluation tests · `scripts/make_test_data.py` builds the test workbook
 - `docs/HANDOVER.md` setup, rules and runbook · `docs/SECURITY.md` database security and paid private-network options
 
 No student data or phone numbers are in this repo (it is public). Test data is loaded from the private

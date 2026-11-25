@@ -128,7 +128,7 @@ def add_member(phone, name, role, cls=None, by=""):
     phone = norm_phone(phone)
     if not valid_mobile(phone):
         raise ValueError("Enter a valid 10-digit mobile number")
-    if role not in ("teacher", "principal", "correspondent", "admin"):
+    if role not in ("teacher", "principal", "correspondent", "admin", "superadmin"):
         raise ValueError("Unknown role")
     if role == "teacher" and not cls:
         raise ValueError("Choose the class for a class teacher")
@@ -183,7 +183,11 @@ def run_fee_reminders(by="cron", on: str | None = None) -> dict:
     return {"date": on, "count": len(sent), "messages": sent}
 
 
-def record_payment(sid, amount, by) -> dict:
+PAY_MODES = ("Cash", "UPI", "Bank", "Cheque")
+
+
+def record_payment(sid, amount, by, mode="Cash", ref="", entered_by=None, on=None) -> dict:
+    """Apply an APPROVED payment to the student's fee record (only called after approval)."""
     amount = int(amount)
     if amount <= 0:
         raise ValueError("Amount must be more than 0")
@@ -192,9 +196,84 @@ def record_payment(sid, amount, by) -> dict:
     if not s:
         raise ValueError("Student not found")
     s["fee_paid"] = min(int(s["fee_total"]), int(s["fee_paid"]) + amount)
-    s.setdefault("payments", []).append({"date": today(), "amount": amount, "by": by})
+    s.setdefault("payments", []).append({"date": on or today(), "amount": amount, "mode": mode, "ref": ref,
+                                         "entered_by": entered_by or by, "approved_by": by})
     store.set("students", studs)
     return s
+
+
+def fee_entries(status: str | None = None) -> list[dict]:
+    items = store.get("fee_entries", []) or []
+    return [e for e in items if not status or e["status"] == status]
+
+
+def submit_fee_entry(sid, amount, mode, ref, by_phone, by_name, approve_now=False) -> dict:
+    """Admin enters a fee payment -> PENDING until the principal approves. A principal's own entry is
+    approved at once. Nothing reaches the fee records or dashboards before approval."""
+    s = student(sid)
+    if not s:
+        raise ValueError("Student not found")
+    amount = int(amount)
+    if amount <= 0:
+        raise ValueError("Amount must be more than 0")
+    if amount > balance(s):
+        raise ValueError(f"Amount is more than the pending balance (Rs.{balance(s):,})")
+    if mode not in PAY_MODES:
+        raise ValueError("Choose Cash, UPI, Bank or Cheque")
+    e = {"id": f"f{int(time.time() * 1000)}", "student": sid, "name": s["name"], "class": s["class"],
+         "amount": amount, "mode": mode, "ref": (ref or "").strip()[:40], "date": today(),
+         "by": by_phone, "by_name": by_name, "at": int(time.time()), "status": "pending"}
+    store.push("fee_entries", e, cap=3000)
+    if approve_now:
+        return decide_fee_entry(e["id"], True, by_phone, by_name)
+    return e
+
+
+def decide_fee_entry(eid, approve: bool, by_phone, by_name, reason="") -> dict:
+    items = store.get("fee_entries", []) or []
+    e = next((x for x in items if x["id"] == eid), None)
+    if not e:
+        raise ValueError("Entry not found")
+    if e["status"] != "pending":
+        raise ValueError(f"Already {e['status']}")
+    if approve:
+        record_payment(e["student"], e["amount"], by_phone, e["mode"], e["ref"], entered_by=e["by"], on=e["date"])
+    e.update(status="approved" if approve else "rejected", decided_by=by_name, decided_phone=by_phone,
+             decided_at=int(time.time()), reason=(reason or "").strip()[:200])
+    store.set("fee_entries", items)
+    return e
+
+
+def daily_collection(days=7) -> dict:
+    """Approved collections by payment date (last `days` days, newest last) and today's receipts."""
+    ds = [(date.fromisoformat(today()) - timedelta(days=i)).isoformat() for i in range(days)][::-1]
+    by_day = {d: {"date": d, "total": 0, "count": 0, "modes": {}} for d in ds}
+    receipts = []
+    for s in students():
+        for p in s.get("payments", []):
+            if p["date"] in by_day:
+                d = by_day[p["date"]]
+                d["total"] += p["amount"]
+                d["count"] += 1
+                d["modes"][p.get("mode", "Cash")] = d["modes"].get(p.get("mode", "Cash"), 0) + p["amount"]
+                if p["date"] == today():
+                    receipts.append({"name": s["name"], "class": s["class"], "amount": p["amount"],
+                                     "mode": p.get("mode", "Cash"), "ref": p.get("ref", "")})
+    return {"today": by_day[today()], "days": list(by_day.values()), "receipts": receipts}
+
+
+def teacher_fee_reminder(sid, cls, by_phone, by_name) -> dict:
+    """A class teacher (or management) sends one fee reminder now. At most once a day per child."""
+    s = student(sid)
+    if not s or (cls is not None and int(s["class"]) != int(cls)):
+        raise ValueError("Student not found in your class")
+    if balance(s) <= 0:
+        raise ValueError("No fee is pending for this student")
+    if store.get(f"feerem:{sid}") == today():
+        raise ValueError("A fee reminder was already sent to this parent today")
+    m = notify.send(s["phone"], fee_message(s), "fee", {"student": sid, "by": by_name})
+    store.set(f"feerem:{sid}", today())
+    return {"student": sid, "name": s["name"], "status": m["status"], "link": m["link"], "id": m["id"]}
 
 
 def fee_summary() -> dict:
@@ -214,6 +293,7 @@ def fee_summary() -> dict:
                        "last_reminder": last.get(f"feerem:{s['id']}")} for s in studs if fee_flag(s)],
                      key=lambda x: -x["balance"])
     return {"total": tot, "paid": paid, "balance": tot - paid, "pct": round(paid / tot * 100) if tot else 0,
+            "collection": daily_collection(7), "pending": len(fee_entries("pending")),
             "classes": classes, "flagged": flagged, "rule": "Reminder when more than 30% is unpaid, every 3 weeks",
             "last_run": store.get("fee_reminder_run")}
 
@@ -223,10 +303,9 @@ def att_sheet(d: str, cls) -> dict | None:
     return store.get(f"att:{d}:{cls}")
 
 
-def absent_message(s, d, teacher_name) -> str:
-    return (f"Dear {s['parent']}, {s['name']} (Class {s['class']}) is ABSENT today ({d}). "
-            f"ఈ రోజు మీ పిల్లలు పాఠశాలకు రాలేదు. If this is wrong, please inform class teacher {teacher_name}. "
-            f"- {SCHOOL}, Kota")
+def absent_message(s, d=None, teacher_name=None) -> str:
+    return (f"Dear parent, your kid: Name: {s['name']} (Class {s['class']}) is absent today. "
+            f"Kindly check and do the needful.\n- {SCHOOL}, Kota")
 
 
 def save_attendance(cls, marks: dict, by_phone: str, by_name: str, d: str | None = None) -> dict:

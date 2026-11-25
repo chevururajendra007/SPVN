@@ -3,13 +3,16 @@
 Who can log in (roles are re-checked on every request, so removing someone works at once):
   parent         mobile number is a parent number on a student record
   teacher        number in the staff list (class teacher of a class)
+  superadmin     SUPERADMIN_PHONES (Vercel env) or assigned by a super admin: all powers + assigns roles
   principal / correspondent / admin
                  numbers in PRINCIPAL_PHONES / CORRESPONDENT_PHONES / ADMIN_PHONES (Vercel env, comma
-                 separated) or added by an admin in the portal (Team tab)
+                 separated) or assigned by a super admin in the portal (Roles tab).
+                 Admin = write-only: can add entries (fees go to the principal for approval) but not
+                 change or delete existing records.
 One number can hold several roles (e.g. a teacher who is also a parent): the app asks which one to use.
 
 OTP: 6 digits, stored only as an HMAC hash, valid 5 minutes, 5 tries, 30 s between sends.
-Delivery: WhatsApp Cloud API (notify.py) when configured. OTP_DEV_MODE=true shows the code on screen
+Delivery: SMS (Fast2SMS) or WhatsApp Cloud API (notify.py) when configured. OTP_DEV_MODE=true shows the code on screen
 for testing - that gives NO real protection and must be switched off before parents use the app.
 """
 import base64
@@ -25,8 +28,12 @@ import notify
 import store
 
 TOKEN_DAYS = 90
-MGMT_ROLES = ("principal", "correspondent", "admin")
-ROLE_ORDER = ("principal", "correspondent", "admin", "teacher", "parent")
+MGMT_ROLES = ("superadmin", "principal", "correspondent", "admin")
+ROLE_ORDER = ("superadmin", "principal", "correspondent", "admin", "teacher", "parent")
+
+
+ROLE_NAMES = {"superadmin": "Super admin", "principal": "Principal", "correspondent": "Correspondent",
+              "admin": "Admin", "teacher": "Class teacher", "parent": "Parent"}
 
 
 class AuthError(Exception):
@@ -66,17 +73,20 @@ def _env_phones(name):
     return {norm_phone(x) for x in os.getenv(name, "").split(",") if norm_phone(x)}
 
 
+ENV_ROLES = (("superadmin", "SUPERADMIN_PHONES"), ("principal", "PRINCIPAL_PHONES"),
+             ("correspondent", "CORRESPONDENT_PHONES"), ("admin", "ADMIN_PHONES"))
+
+
 def roles_for(phone: str) -> list[dict]:
     """All roles this mobile number holds right now."""
     import school  # local import: school imports auth
     phone = norm_phone(phone)
     out = []
     team = school.team()
-    for role, env in (("principal", "PRINCIPAL_PHONES"), ("correspondent", "CORRESPONDENT_PHONES"),
-                      ("admin", "ADMIN_PHONES")):
+    for role, env in ENV_ROLES:
         names = [t["name"] for t in team if t["phone"] == phone and t["role"] == role]
         if phone in _env_phones(env) or names:
-            out.append({"role": role, "name": names[0] if names else role.title()})
+            out.append({"role": role, "name": names[0] if names else ROLE_NAMES[role]})
     for t in team:
         if t["phone"] == phone and t["role"] == "teacher":
             out.append({"role": "teacher", "name": t["name"], "class": t.get("class")})

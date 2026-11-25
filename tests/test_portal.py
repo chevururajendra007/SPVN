@@ -48,7 +48,7 @@ def client(tmp_path_factory):
     os.environ.update({
         "SPV_STORE_FILE": str(tmp_path_factory.mktemp("db") / "store.json"),
         "OTP_DEV_MODE": "true", "JWT_SECRET": "test-secret", "PRINCIPAL_PHONES": PRINCIPAL,
-        "ADMIN_PHONES": PRINCIPAL, "CORRESPONDENT_PHONES": PRINCIPAL, "VAN_KEY": "vankey", "CRON_SECRET": "cron",
+        "SUPERADMIN_PHONES": PRINCIPAL, "ADMIN_PHONES": DUAL_PHONE, "CORRESPONDENT_PHONES": PRINCIPAL, "VAN_KEY": "vankey", "CRON_SECRET": "cron",
         "LLM_PROVIDER": "offline", "DATA_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
         "SEED_DATA": base64.b64encode(gzip.compress(Path(SEED).read_bytes())).decode()})
     for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID"):
@@ -93,7 +93,7 @@ def test_wrong_otp_rejected_and_resend_limited(client):
 
 def test_one_number_two_roles(client):
     _, roles = login(client, DUAL_PHONE)
-    assert roles == ["teacher", "parent"]
+    assert roles == ["admin", "teacher", "parent"]
 
 
 def test_parent_sees_only_own_child(client):
@@ -135,7 +135,7 @@ def test_attendance_needs_every_student(client):
 
 def test_principal_dashboard_and_search(client):
     h, roles = login(client, PRINCIPAL, "principal")
-    assert {"principal", "correspondent", "admin", "parent"} <= set(roles)
+    assert {"superadmin", "principal", "correspondent", "parent"} <= set(roles)
     d = client.get("/api/portal/dashboard", headers=h).json()
     assert d["students"] == 100 and d["attendance"]["marked"] >= 1
     assert d["fees"]["flagged"] and all(x["pct"] > 30 for x in d["fees"]["flagged"])
@@ -162,9 +162,12 @@ def test_fee_reminders_run_once_per_three_weeks(client):
 
 
 def test_payment_clears_reminder(client):
-    h, _ = login(client, PRINCIPAL, "admin")
-    card = client.post("/api/portal/fees/payment", headers=h, json={"student": KID_O["id"], "amount": KID_O["fee_total"]}).json()
-    assert card["balance"] == 0 and not card["fee_flag"]
+    h, _ = login(client, PRINCIPAL, "principal")
+    bal = KID_O["fee_total"] - KID_O["fee_paid"]
+    e = client.post("/api/portal/fees/payment", headers=h, json={"student": KID_O["id"], "amount": bal, "mode": "UPI"}).json()
+    assert e["status"] == "approved"  # principal's own entry is approved at once
+    card = client.get(f"/api/portal/student/{KID_O['id']}", headers=h).json()
+    assert card["balance"] == 0 and not card["fee_flag"] and card["payments"][-1]["mode"] == "UPI"
 
 
 def test_circular_to_staff(client):
@@ -179,7 +182,7 @@ def test_circular_to_staff(client):
 
 
 def test_admin_update_reaches_right_class(client):
-    h, _ = login(client, PRINCIPAL, "admin")
+    h, _ = login(client, DUAL_PHONE, "admin")
     r = client.post("/api/portal/updates", headers=h, json={"text": "Class picnic on Friday", "audience": str(KID_D["class"])}).json()
     assert r["messages"]["queued"] >= 1
     p, _ = login(client, DUAL_PHONE, "parent")
@@ -225,7 +228,7 @@ def test_agent_answers_from_own_data(client):
 
 
 def test_team_and_excel_import(client):
-    h, _ = login(client, PRINCIPAL, "admin")
+    h, _ = login(client, PRINCIPAL, "superadmin")
     assert client.post("/api/portal/team", headers=h, json={"phone": "9000011111", "name": "Office", "role": "teacher"}).status_code == 400
     xlsx = Path(SEED).with_name("SPV_Test_Students.xlsx")
     if xlsx.exists():
@@ -234,3 +237,113 @@ def test_team_and_excel_import(client):
         p, _ = login(client, DUAL_PHONE, "parent")
         kid = client.get("/api/portal/parent", headers=p).json()["children"][0]
         assert kid["marks"]["SA1"]["Maths"] > 0
+
+
+def test_admin_fee_entry_needs_principal_approval(client):
+    a, _ = login(client, DUAL_PHONE, "admin")
+    kid = next(x for x in json.loads(Path(SEED).read_text())["students"]
+               if x["class"] == 2 and x["fee_paid"] < x["fee_total"])
+    before = client.get(f"/api/portal/student/{kid['id']}", headers=a).json()["fee_paid"]
+    e = client.post("/api/portal/fees/payment", headers=a, json={"student": kid["id"], "amount": 1000, "mode": "Cash"}).json()
+    assert e["status"] == "pending"
+    assert client.get(f"/api/portal/student/{kid['id']}", headers=a).json()["fee_paid"] == before  # not applied yet
+    assert client.post(f"/api/portal/fees/entries/{e['id']}/approve", headers=a, json={}).status_code == 403
+    p, _ = login(client, PRINCIPAL, "principal")
+    d0 = client.get("/api/portal/dashboard", headers=p).json()["fees"]
+    assert d0["pending"] >= 1
+    ok = client.post(f"/api/portal/fees/entries/{e['id']}/approve", headers=p, json={}).json()
+    assert ok["status"] == "approved"
+    assert client.get(f"/api/portal/student/{kid['id']}", headers=p).json()["fee_paid"] == before + 1000
+    d1 = client.get("/api/portal/dashboard", headers=p).json()["fees"]["collection"]["today"]
+    assert d1["total"] >= 1000 and d1["modes"]["Cash"] >= 1000
+    assert client.post(f"/api/portal/fees/entries/{e['id']}/approve", headers=p, json={}).status_code == 400
+    e2 = client.post("/api/portal/fees/payment", headers=a, json={"student": kid["id"], "amount": 500, "mode": "UPI"}).json()
+    r = client.post(f"/api/portal/fees/entries/{e2['id']}/reject", headers=p, json={"reason": "wrong amount"}).json()
+    assert r["status"] == "rejected"
+    assert client.get(f"/api/portal/student/{kid['id']}", headers=p).json()["fee_paid"] == before + 1000
+    mine = client.get("/api/portal/fees/entries", headers=a).json()["items"]
+    assert {x["status"] for x in mine} >= {"approved", "rejected"}
+
+
+def test_admin_is_write_only(client):
+    a, _ = login(client, DUAL_PHONE, "admin")
+    assert client.post("/api/portal/team", headers=a, json={"phone": "9000011111", "name": "X", "role": "admin"}).status_code == 403
+    assert client.delete(f"/api/portal/team/{TEACHER_PHONE}/teacher", headers=a).status_code == 403
+    assert client.post("/api/portal/routes/R1", headers=a, json={"driver": "X"}).status_code == 403
+    assert client.post("/api/portal/import", headers=a, content=b"x").status_code == 403
+    assert client.post("/api/portal/attendance", headers=a, json={"cls": 1, "marks": {}}).status_code == 403
+    assert client.get("/api/portal/team", headers=a).json()["can_assign"] is False
+
+
+def test_superadmin_assigns_roles(client):
+    sa, _ = login(client, PRINCIPAL, "superadmin")
+    assert client.get("/api/portal/team", headers=sa).json()["can_assign"] is True
+    assert client.post("/api/portal/team", headers=sa, json={"phone": "9123456780", "name": "New Admin", "role": "admin"}).json()["ok"]
+    _, roles = login(client, "9123456780")
+    assert roles == ["admin"]
+    client.delete("/api/portal/team/9123456780/admin", headers=sa)
+    assert client.post("/api/auth/otp", json={"phone": "9123456780"}).status_code == 404
+
+
+def test_teacher_fee_reminder_own_class_once_a_day(client):
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    r = client.post(f"/api/portal/fees/remind/{KID_D['id']}", headers=t)
+    assert r.status_code in (200, 400)  # 400 if this child's fee was already paid or reminded today
+    if r.status_code == 200:
+        assert r.json()["status"] == "queued" and "fee reminder" in r.json()["link"].lower().replace("%20", " ")
+        assert client.post(f"/api/portal/fees/remind/{KID_D['id']}", headers=t).status_code == 400
+    assert client.post(f"/api/portal/fees/remind/{KID_O['id']}", headers=t).status_code == 400  # other class
+
+
+def test_absent_message_text():
+    import school
+    msg = school.absent_message({"name": "Ravi", "class": 4})
+    assert msg.startswith("Dear parent, your kid: Name: Ravi (Class 4) is absent today. Kindly check and do the needful.")
+
+
+def test_practicals_plan_and_marking(client):
+    import practicals
+    weeks = practicals.all_weeks()
+    assert len(weeks) == 40 and all(set(w["activities"]) == set(practicals.BANDS) for w in weeks)
+    assert all(w["inspired"].startswith(("Japan", "Europe", "Netherlands", "Finland", "Germany", "Denmark",
+                                         "Switzerland", "Montessori", "Estonia", "Norway")) for w in weeks)
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    v = client.get("/api/portal/practicals", headers=t).json()
+    assert v["class"] == TEACHER["class"] and len(v["weeks"]) == 40
+    client.post("/api/portal/practicals/done", headers=t, json={"no": v["current"], "note": "Done in the ground"})
+    p, _ = login(client, PRINCIPAL, "principal")
+    sv = client.get("/api/portal/dashboard", headers=p).json()["practicals"]
+    assert sv["done_count"] >= 1
+    k, _ = login(client, DUAL_PHONE, "parent")
+    assert client.get("/api/portal/parent", headers=k).json()["children"][0]["practical"]["activity"]
+
+
+def test_lesson_summary_without_ai_and_share(client, monkeypatch):
+    for k in ("AI_GATEWAY_API_KEY", "VERCEL_OIDC_TOKEN"):
+        monkeypatch.delenv(k, raising=False)
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    text = ("Plants make their own food by photosynthesis. Leaves contain chlorophyll which captures sunlight. "
+            "Roots absorb water from the soil. Stems carry water to the leaves. Plants release oxygen into the air.")
+    r = client.post("/api/portal/lessons/summarize", headers=t, json={"subject": "Science", "text": text}).json()
+    assert r["source"] == "simple" and "KEY POINTS" in r["summary"]
+    img = "data:image/jpeg;base64,/9j/4AAQ"
+    assert client.post("/api/portal/lessons/summarize", headers=t, json={"images": [img]}).status_code == 400
+    s = client.post("/api/portal/lessons", headers=t, json={"subject": "Science", "summary": r["summary"]}).json()
+    assert s["item"]["class"] == TEACHER["class"] and s["messages"]["queued"] >= 1
+    k, _ = login(client, DUAL_PHONE, "parent")
+    kid = client.get("/api/portal/parent", headers=k).json()["children"][0]
+    assert kid["lessons"][0]["subject"] == "Science"
+
+
+def test_lesson_summary_with_ai(client, monkeypatch):
+    import lessons
+    monkeypatch.setenv("AI_GATEWAY_API_KEY", "test")
+    seen = {}
+    def fake(content, hdr):
+        seen["n"] = sum(1 for c in content if c["type"] == "image_url")
+        return "TITLE: Water cycle\nKEY POINTS:\n- Water evaporates"
+    monkeypatch.setattr(lessons, "_call_ai", fake)
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    img = "data:image/jpeg;base64," + base64.b64encode(b"x" * 100).decode()
+    r = client.post("/api/portal/lessons/summarize", headers=t, json={"subject": "Science", "images": [img, img]}).json()
+    assert r["source"] == "ai" and seen["n"] == 2 and r["summary"].startswith("TITLE: Water cycle")

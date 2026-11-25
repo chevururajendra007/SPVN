@@ -7,6 +7,7 @@ python-dotenv
 pg8000
 openpyxl
 cryptography
+pypdf
 pytest
 # optional, only for LLM_PROVIDER=azure:
 # langchain-azure-ai

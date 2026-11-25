@@ -12,6 +12,7 @@ MAX_STEPS = 5
 ROLE_INFO = {
     "parent": "a parent. Talk only about their own children using the tools. Be warm and simple.",
     "teacher": "a class teacher. Help with their class: attendance, students, marks, circulars, vans.",
+    "superadmin": "the super admin (school management). Give short, numbers-first answers about the whole school.",
     "principal": "the principal. Give short, numbers-first answers about the whole school.",
     "correspondent": "the correspondent (management). Give short, numbers-first answers about the whole school.",
     "admin": "the school admin. Help with students, fees, messages and vans.",
@@ -32,6 +33,8 @@ Rules:
 ROUTES = [  # (keywords, skill name) checked in order; only skills the role has are used
     (("van", "bus", "gps", "pickup", "వ్యాన్", "బస్సు"), ("my_van", "all_vans")),
     (("defaulter", "pending fee", "fee pending", "not paid", "balance list"), ("fee_defaulters",)),
+    (("collection", "collected", "today's fee", "receipts", "approval"), ("fee_collection",)),
+    (("practical", "activity", "activities", "this week"), ("practical_this_week",)),
     (("fee", "fees", "ఫీజు", "collection"), ("child_report", "fee_overview", "my_class_students")),
     (("last week", "trend", "7 days"), ("attendance_last_week",)),
     (("attendance", "absent", "present", "హాజరు"), ("child_report", "class_attendance_today", "attendance_today")),

@@ -9,6 +9,7 @@ buttons in the app, where the person confirms it.
 import json
 
 import notify
+import practicals
 import school
 import store
 import van
@@ -156,6 +157,29 @@ def make_skills(ctx: dict) -> list:
         return "\n".join(f"{t['date']}: {t['pct']}%" if t["pct"] is not None else f"{t['date']}: not marked"
                          for t in school.attendance_trend(7))
 
+    def fee_collection() -> str:
+        """Fees collected today and in the last 7 days (approved entries only), and pending approvals."""
+        c = school.daily_collection(7)
+        days = "\n".join(f"{d['date']}: {_rupees(d['total'])} ({d['count']} receipts)" for d in c["days"])
+        return (f"Today: {_rupees(c['today']['total'])} from {c['today']['count']} receipts. "
+                f"Waiting for principal approval: {len(school.fee_entries('pending'))}.\nLast 7 days:\n{days}")
+
+    def practical_this_week() -> str:
+        """This week's practical session (activity) for my class / my child's class / all classes."""
+        if role == "parent":
+            out = []
+            for k in school.children(phone):
+                e = practicals.entry(practicals.current_no(school.today()))
+                out.append(f"{k['name']} (Class {k['class']}): {e['theme']} - {e['activities'][practicals.band(k['class'])]}")
+            return "\n".join(out) or "No children linked."
+        if role == "teacher":
+            e = practicals.entry(practicals.current_no(school.today()))
+            return (f"Week {e['no']} - {e['theme']} ({e['inspired']}; Kota link: {e['local']}).\n"
+                    f"Class {cls}: {e['activities'][practicals.band(cls)]}")
+        v = practicals.school_view(school.today(), sorted({int(s['class']) for s in school.students()}))
+        return (f"Week {v['current']} - {v['week']['theme']}: {v['done_count']}/{v['total']} classes done.\n"
+                + "\n".join(f"Class {c['class']}: {'done' if c['done'] else 'pending'}" for c in v["classes"]))
+
     def message_outbox() -> str:
         """WhatsApp messages waiting to be sent or sent recently."""
         items = store.get("outbox", []) or []
@@ -166,13 +190,15 @@ def make_skills(ctx: dict) -> list:
         return f"Sending mode: {mode}. Last 200 messages: {json.dumps(counts)}"
 
     by_role = {
-        "parent": [my_children, child_report, school_updates, my_van],
-        "teacher": [class_attendance_today, my_class_students, my_class_marks, staff_circulars, all_vans],
-        "principal": [attendance_today, attendance_last_week, fee_overview, fee_defaulters, search_students,
-                      staff_circulars, all_vans],
-        "correspondent": [attendance_today, attendance_last_week, fee_overview, fee_defaulters, search_students,
-                          all_vans],
-        "admin": [attendance_today, fee_overview, fee_defaulters, search_students, staff_circulars, all_vans,
-                  message_outbox],
+        "parent": [my_children, child_report, school_updates, my_van, practical_this_week],
+        "teacher": [class_attendance_today, my_class_students, my_class_marks, staff_circulars, all_vans,
+                    practical_this_week],
+        "principal": [attendance_today, attendance_last_week, fee_overview, fee_collection, fee_defaulters,
+                      search_students, staff_circulars, all_vans, practical_this_week],
+        "correspondent": [attendance_today, attendance_last_week, fee_overview, fee_collection, fee_defaulters,
+                          search_students, all_vans, practical_this_week],
+        "admin": [attendance_today, fee_overview, fee_collection, fee_defaulters, search_students, staff_circulars,
+                  all_vans, message_outbox],
     }
+    by_role["superadmin"] = by_role["principal"] + [message_outbox]
     return common + by_role.get(role, [])

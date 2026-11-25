@@ -21,12 +21,25 @@ Secondary: fee collection % at the end of term against last term.
 **Out of scope (for now):** online fee payment, marks entry screen (marks come from Excel), timetable,
 report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing only), Telugu UI translation.
 
+## Release 2 (25 Nov 2026)
+- Super admin role (assigns roles from the portal), write-only admin, principal approval of fee entries
+- Daily fee collection (approved payments only) on the dashboard and Fees tab
+- Teacher "Fee reminder" button per student (once a day per child); absent message:
+  "Dear parent, your kid: Name: <name> (Class N) is absent today. Kindly check and do the needful."
+- Lesson scan: photos / PDF / text -> summary with key words (Telugu), memory tips and quiz; share to parents
+  (AI: Vercel AI Gateway, google/gemini-2.5-flash; text-only fallback without AI)
+- Practical sessions: 40-week plan per class band inspired by Japan and Europe, linked to Kota; mark done
+- Real OTP and automatic WhatsApp: see `docs/SETUP_OTP_WHATSAPP.md`
+
 ## Rules
 | Rule | Where |
 |---|---|
 | Fee reminder: balance > 30% of annual fee, at most once in 21 days | `school.fee_flag`, `school.reminder_due` |
 | Absent alert: once per child per day, even if attendance is saved again | `school.save_attendance` |
 | Class teacher can only see and mark their own class | `portal_api._class_for`, `skills.py` |
+| Admin fee entry is pending until a principal/super admin approves; only approved money counts | `school.submit_fee_entry`, `decide_fee_entry` |
+| Admin is write-only: no role changes, deletes, route edits, imports or attendance edits | `portal_api` permissions |
+| Only a super admin assigns or removes roles | `portal_api.add_member/remove_member` |
 | Parent sees only children whose record has their mobile number | `school.children`, `portal_api` |
 | Test numbers starting with 5 are never messaged | `notify._valid` |
 
@@ -37,7 +50,10 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | `DATA_KEY` | encrypts every stored record (AES-256-GCM). **Never lose or change it** (see SECURITY.md) |
 | `JWT_SECRET` | signs login sessions (random, never share) |
 | `OTP_DEV_MODE` | `true` shows the OTP on screen for testing. **Set to `false` before parents use it** |
-| `PRINCIPAL_PHONES`, `CORRESPONDENT_PHONES`, `ADMIN_PHONES` | comma-separated numbers (more can be added in Team & data) |
+| `SUPERADMIN_PHONES`, `PRINCIPAL_PHONES`, `CORRESPONDENT_PHONES`, `ADMIN_PHONES` | comma-separated numbers (a super admin can assign more in Roles & data) |
+| `FAST2SMS_API_KEY`, `FAST2SMS_OTP_ID` | SMS OTP (see SETUP_OTP_WHATSAPP.md) |
+| `WA_TPL_DEFAULT` | WhatsApp utility template used for all school messages |
+| `AI_GATEWAY_API_KEY` (optional), `LESSON_MODEL` | lesson scan AI; without a key the Vercel OIDC token is used |
 | `VAN_KEY` | secret in the van phones' server URL |
 | `CRON_SECRET` | protects the daily fee-reminder job |
 | `SEED_DATA` | test data (gzip + base64 of the seed JSON); remove once real data is imported |

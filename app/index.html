@@ -181,14 +181,15 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rs=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
-const ROLE={parent:{i:'👨‍👩‍👧',n:'Parent',te:'తల్లిదండ్రులు'},teacher:{i:'🧑‍🏫',n:'Class teacher',te:'ఉపాధ్యాయులు'},
+const ROLE={superadmin:{i:'🔑',n:'Super admin',te:'సూపర్ అడ్మిన్'},parent:{i:'👨‍👩‍👧',n:'Parent',te:'తల్లిదండ్రులు'},teacher:{i:'🧑‍🏫',n:'Class teacher',te:'ఉపాధ్యాయులు'},
   principal:{i:'🏫',n:'Principal',te:'ప్రధానోపాధ్యాయులు'},correspondent:{i:'🏛️',n:'Correspondent',te:'కరస్పాండెంట్'},admin:{i:'🛠️',n:'Admin',te:'అడ్మిన్'}};
 const TABS={
   parent:[['home','🏠 My children'],['van','🚐 Van'],['ask','💬 Ask SPV']],
-  teacher:[['attendance','✅ Attendance'],['homework','📚 Homework'],['students','🔎 My class'],['circulars','📄 Circulars'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['ask','🤖 Ask SPV']],
-  principal:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['ask','🤖 Ask SPV']],
-  correspondent:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['circulars','📄 Circulars'],['ask','🤖 Ask SPV']],
-  admin:[['updates','📢 Parent updates'],['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['team','👥 Team & data'],['circulars','📄 Circulars'],['ask','🤖 Ask SPV']]
+  teacher:[['attendance','✅ Attendance'],['homework','📚 Homework'],['lessons','📷 Lesson scan'],['practicals','🧪 Practicals'],['students','🔎 My class'],['circulars','📄 Circulars'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['ask','🤖 Ask SPV']],
+  superadmin:[['dash','📊 Dashboard'],['fees','💰 Fees'],['team','🔑 Roles & data'],['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['lessons','📷 Lesson scan'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['messages','💬 WhatsApp'],['ask','🤖 Ask SPV']],
+  principal:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['lessons','📷 Lesson scan'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['team','👥 Team'],['ask','🤖 Ask SPV']],
+  correspondent:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['circulars','📄 Circulars'],['ask','🤖 Ask SPV']],
+  admin:[['fees','💰 Fee entry'],['updates','📢 Parent updates'],['dash','📊 Dashboard'],['search','🔎 Search'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['circulars','📄 Circulars'],['team','👥 Team'],['ask','🤖 Ask SPV']]
 };
 let S={token:ls.get('spv-token'),role:ls.get('spv-role'),phone:null,me:null,tab:null,chat:[],timer:null};
 let map=null,layer=null;
@@ -264,6 +265,13 @@ function statusBanners(){const s=S.me.status,out=[];
   return out.join('')}
 function bars(rows){return `<div class="bars">${rows.map(r=>r.v==null?`<div class="bar nm"><span>${esc(r.l)}</span><div class="tr"></div><span class="v">${esc(r.na||'—')}</span></div>`:
   `<div class="bar" title="${esc(r.l)}: ${r.v}%${r.t?' · '+esc(r.t):''}"><span>${esc(r.l)}</span><div class="tr"><div class="fl" style="width:${Math.max(2,r.v)}%"></div></div><span class="v">${r.v}%</span></div>`).join('')}</div>`}
+function dayCols(days){const mx=Math.max(1,...days.map(d=>d.total));
+  return `<div class="cols">${days.map(d=>`<div title="${esc(d.date)}: ${rs(d.total)} (${d.count} receipts)"><b>${d.total?(d.total>=1000?Math.round(d.total/1000)+'k':d.total):'0'}</b><i style="height:${d.total?Math.max(4,d.total/mx*90):2}px;${d.total?'':'background:var(--track)'}"></i>${d.date.slice(8)}/${d.date.slice(5,7)}</div>`).join('')}</div>`}
+function shrinkImage(file){return new Promise((ok,bad)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));
+  const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.8))};
+  img.onerror=()=>bad(new Error('Could not read the photo'));img.src=u})}
+function readDataURL(file){return new Promise((ok,bad)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=()=>bad(new Error('Could not read the file'));r.readAsDataURL(file)})}
+function classPicker(id,cur){return `<select id="${id}" class="btn-line" style="padding:8px 12px;border-radius:999px">${[1,2,3,4,5,6,7,8,9,10].map(c=>`<option value="${c}" ${c===cur?'selected':''}>Class ${c}</option>`).join('')}</select>`}
 function waBtn(m){return m.status==='queued'?`<a class="btn btn-wa btn-sm" href="${esc(m.link)}" target="_blank" rel="noopener" data-mid="${esc(m.id||'')}" onclick="markSent(this)">Send on WhatsApp</a>`:
   `<span class="chip ${m.status==='sent'||m.status==='sent-manual'?'good':m.status==='failed'?'bad':'mute'}">${esc(m.status==='skipped'?'test number':m.status)}</span>`}
 function markSent(a){const id=a.dataset.mid;if(id)post(`/api/portal/outbox/${encodeURIComponent(id)}/sent`,{}).catch(()=>{});
@@ -289,6 +297,8 @@ async home(v){
         ${subs.map(s=>`<tr><td>${esc(s)}</td>${exams.map(e=>`<td class="n">${k.marks[e][s]??''}</td>`).join('')}</tr>`).join('')}
         <tr><th>Total</th>${exams.map(e=>{const t=Object.values(k.marks[e]).reduce((x,y)=>x+y,0);return `<th class="n">${t}/${subs.length*100}</th>`}).join('')}</tr></table></div>`:''}
       <h3 class="h">Recent attendance</h3><div class="inline">${a.recent.map(r=>`<span class="chip ${r.status==='P'?'good':'bad'}" title="${esc(r.date)}">${r.date.slice(8)} ${r.status}</span>`).join('')||'<span class="muted">No records yet</span>'}</div>
+      ${k.practical?`<h3 class="h">🧪 This week's practical session</h3><div class="banner ok"><b>${esc(k.practical.theme)}</b><br>${esc(k.practical.activity)}<br><small>${esc(k.practical.inspired)} · Kota link: ${esc(k.practical.local)}</small></div>`:''}
+      ${k.lessons&&k.lessons.length?`<h3 class="h">📖 Lesson notes</h3>${k.lessons.map(l=>`<details class="item"><summary><b>${esc(l.subject)}: ${esc(l.title)}</b> <small>${esc(l.date)}</small></summary><p>${esc(l.summary)}</p></details>`).join('')}`:''}
       <h3 class="h">Homework</h3>${k.homework.map(h=>`<div class="item"><small>${esc(h.date)} · ${esc(h.subject)} · ${esc(h.by)}</small><p>${esc(h.text)}</p></div>`).join('')||'<p class="muted">No homework posted yet.</p>'}
     </div>`}).join('')+
     `<h3 class="h">School updates</h3><div class="card">${d.updates.map(u=>`<div class="item"><small>${esc(u.date)} · ${esc(u.from)}</small><p>${esc(u.text)}</p></div>`).join('')||'<p class="muted">No updates yet.</p>'}</div>`;
@@ -336,9 +346,12 @@ async homework(v){
 async students(v){
   const d=await api('/api/portal/class');
   v.innerHTML=`<h2 class="h">My class · Class ${d.class}</h2><div class="f" style="margin-bottom:10px"><input id="q" placeholder="Search name…"></div><div class="card" id="list"></div>`;
-  const draw=q=>$('list').innerHTML=d.students.filter(s=>s.name.toLowerCase().includes(q)).map(s=>`<div class="res" data-id="${esc(s.id)}"><div><b>${s.sno}. ${esc(s.name)}</b><div class="muted">${esc(s.parent)} · ${esc(s.phone)}</div></div>${s.fee_flag?'<span class="chip warn">fee pending</span>':''}</div>`).join('')||'<p class="muted">No match.</p>';
+  const draw=q=>$('list').innerHTML=d.students.filter(s=>s.name.toLowerCase().includes(q)).map(s=>`<div class="res" data-id="${esc(s.id)}"><div><b>${s.sno}. ${esc(s.name)}</b><div class="muted">${esc(s.parent)} · ${esc(s.phone)}${s.balance>0?` · fee pending ${rs(s.balance)}`:''}</div></div>${s.balance>0?`<button class="btn ${s.fee_flag?'btn-gold':'btn-line'} btn-sm" data-rem="${esc(s.id)}">💰 Fee reminder</button>`:'<span class="chip good">fees paid</span>'}</div>`).join('')||'<p class="muted">No match.</p>';
   draw('');$('q').oninput=e=>draw(e.target.value.toLowerCase());
-  $('list').onclick=e=>{const r=e.target.closest('.res');if(r)studentDetail(r.dataset.id)};
+  $('list').onclick=async e=>{const b=e.target.closest('[data-rem]');
+    if(b){e.stopPropagation();b.disabled=true;try{const r=await post('/api/portal/fees/remind/'+encodeURIComponent(b.dataset.rem),{});
+      b.outerHTML=r.status==='queued'?waBtn(r):`<span class="chip good">${esc(r.status)}</span>`;toast('Fee reminder ready for '+r.name)}catch(err){toast(err.message);b.disabled=false}return}
+    const r=e.target.closest('.res');if(r)studentDetail(r.dataset.id)};
 },
 
 // ---------- management
@@ -350,6 +363,8 @@ async dash(v){
       <div class="tile"><small>Attendance today</small><b>${a.pct??'—'}${a.pct!=null?'%':''}</b><em>${a.marked}/${a.total_classes} classes marked</em></div>
       <div class="tile"><small>Fees collected</small><b>${f.pct}%</b><em>${rs(f.paid)} of ${rs(f.total)}</em></div>
       <div class="tile"><small>Fee balance</small><b>${rs(f.balance)}</b><em>${f.flagged.length} students above 30%</em></div>
+      <div class="tile"><small>Collected today</small><b>${rs(f.collection.today.total)}</b><em>${f.collection.today.count} receipts${f.pending?` · <b style="font-size:.74rem;color:var(--warn)">${f.pending} awaiting approval</b>`:''}</em></div>
+      <div class="tile"><small>Practicals this week</small><b>${d.practicals.done_count}/${d.practicals.total}</b><em>${esc(d.practicals.week.theme)}</em></div>
     </div>
     <div class="card"><h3 class="h" style="margin-top:0">Attendance today by class</h3>
       ${bars(a.classes.map(c=>({l:'Class '+c.class,v:c.marked?c.pct:null,na:'not marked',t:c.marked?`${c.present}/${c.strength} present`:''})))}
@@ -358,25 +373,51 @@ async dash(v){
     <div class="card"><h3 class="h" style="margin-top:0">Attendance · last 7 school days</h3>
       <div class="cols">${d.trend.map(t=>`<div title="${esc(t.date)}: ${t.pct??'not marked'}${t.pct!=null?'%':''}"><b>${t.pct??'–'}</b><i style="height:${t.pct?Math.max(4,(t.pct-50)*1.6):2}px;${t.pct?'':'background:var(--track)'}"></i>${t.date.slice(8)}/${t.date.slice(5,7)}</div>`).join('')}</div>
       <p class="muted" style="margin-top:6px">Bar height starts at 50% so day-to-day changes are visible.</p></div>
+    <div class="card"><h3 class="h" style="margin-top:0">Daily fee collection · last 7 days</h3>${dayCols(f.collection.days)}
+      <p class="muted" style="margin-top:6px">Only payments approved by the principal are counted.</p></div>
     <div class="card"><h3 class="h" style="margin-top:0">Fee collection by class</h3>
       ${bars(f.classes.map(c=>({l:'Class '+c.class,v:c.pct,t:`${rs(c.paid)} of ${rs(c.total)}`})))}
       <p class="muted" style="margin-top:8px">${esc(f.rule)}.</p></div>`;
 },
 async fees(v){
-  const d=await api('/api/portal/dashboard'),f=d.fees,canPay=['principal','admin'].includes(S.role);
-  v.innerHTML=`<h2 class="h">Fees</h2>
-    <div class="tiles"><div class="tile"><small>Collected</small><b>${f.pct}%</b><em>${rs(f.paid)}</em></div><div class="tile"><small>Balance</small><b>${rs(f.balance)}</b><em>of ${rs(f.total)}</em></div>
-      <div class="tile"><small>Reminder list</small><b>${f.flagged.length}</b><em>above 30% pending</em></div></div>
+  const d=await api('/api/portal/dashboard'),f=d.fees,c=f.collection,role=S.role;
+  const canEnter=['admin','principal','superadmin'].includes(role),canApprove=['principal','superadmin'].includes(role);
+  const ents=await api('/api/portal/fees/entries'+(canApprove?'?status=pending':''));
+  v.innerHTML=`<h2 class="h">${role==='admin'?'Fee entry':'Fees'}</h2>
+    <div class="tiles"><div class="tile"><small>Collected today</small><b>${rs(c.today.total)}</b><em>${c.today.count} receipts · ${Object.entries(c.today.modes).map(([m,a])=>esc(m)+' '+rs(a)).join(' · ')||'—'}</em></div>
+      <div class="tile"><small>Awaiting approval</small><b>${f.pending}</b><em>entered by admin</em></div>
+      <div class="tile"><small>Collected (year)</small><b>${f.pct}%</b><em>${rs(f.paid)} of ${rs(f.total)}</em></div>
+      <div class="tile"><small>Balance</small><b>${rs(f.balance)}</b><em>${f.flagged.length} above 30%</em></div></div>
+    ${canEnter?`<div class="card"><b>Enter a fee payment</b><p class="muted" style="margin:4px 0 8px">${role==='admin'?'Your entry goes to the principal for approval. It updates the records and dashboard only after approval.':'Your entry is approved at once.'}</p>
+      <div class="f"><input id="pq" placeholder="Search student name or admission no…" autocomplete="off"><div id="pres"></div>
+      <div id="psel" class="muted">No student chosen</div>
+      <input id="pamt" inputmode="numeric" placeholder="Amount (₹)"><select id="pmode"><option>Cash</option><option>UPI</option><option>Bank</option><option>Cheque</option></select>
+      <input id="pref" placeholder="Receipt no / UPI ref (optional)" maxlength="40"><button class="btn btn-navy" id="psave">${role==='admin'?'Send for approval':'Save payment'}</button></div></div>`:''}
+    ${canApprove?`<h3 class="h">Waiting for your approval (${ents.items.length})</h3><div class="card">${ents.items.map(e=>`<div class="item"><div class="inline" style="justify-content:space-between"><div><b>${esc(e.name)}</b> · Class ${e.class}<div class="muted">${rs(e.amount)} · ${esc(e.mode)}${e.ref?' · '+esc(e.ref):''} · by ${esc(e.by_name)} · ${esc(e.date)}</div></div>
+        <div class="inline"><button class="btn btn-navy btn-sm" data-ok="${esc(e.id)}">Approve</button><button class="btn btn-line btn-sm" data-no="${esc(e.id)}">Reject</button></div></div></div>`).join('')||'<p class="muted">Nothing to approve.</p>'}</div>`:''}
+    ${role==='admin'?`<h3 class="h">My entries</h3><div class="card">${ents.items.slice(0,30).map(e=>`<div class="res" style="cursor:default"><span>${esc(e.name)} · ${rs(e.amount)} · ${esc(e.mode)} <small class="muted">${esc(e.date)}</small>${e.reason?`<br><small class="muted">Reason: ${esc(e.reason)}</small>`:''}</span><span class="chip ${e.status==='approved'?'good':e.status==='rejected'?'bad':'warn'}">${esc(e.status)}</span></div>`).join('')||'<p class="muted">No entries yet.</p>'}</div>`:''}
+    <h3 class="h">Today's receipts</h3><div class="card scroll">${c.receipts.length?`<table><tr><th>Student</th><th class="n">Class</th><th class="n">Amount</th><th>Mode</th></tr>${c.receipts.map(r=>`<tr><td>${esc(r.name)}</td><td class="n">${r.class}</td><td class="n">${rs(r.amount)}</td><td>${esc(r.mode)}${r.ref?' · '+esc(r.ref):''}</td></tr>`).join('')}</table>`:'<p class="muted">No approved payments today.</p>'}</div>
+    <div class="card"><h3 class="h" style="margin-top:0">Last 7 days</h3>${dayCols(c.days)}</div>
     <div class="card"><b>Automatic reminders</b><p class="muted" style="margin:4px 0 10px">${esc(f.rule)}. Runs every morning. Last run: ${f.last_run?new Date(f.last_run.at*1000).toLocaleString('en-IN')+` (${f.last_run.count} sent)`:'not yet'}.</p>
       <button class="btn btn-navy btn-sm" id="remind">Send due reminders now</button><div id="remRes"></div></div>
     <h3 class="h">Students above 30% pending</h3><div class="f" style="margin-bottom:8px"><input id="fq" placeholder="Filter by name or class…"></div>
     <div class="card scroll"><table id="ft"></table></div>`;
-  const draw=q=>$('ft').innerHTML=`<tr><th>Student</th><th class="n">Class</th><th class="n">Pending</th><th class="n">%</th><th>Last reminder</th>${canPay?'<th></th>':''}</tr>`+
-    f.flagged.filter(x=>!q||x.name.toLowerCase().includes(q)||String(x.class)===q).map(x=>`<tr><td>${esc(x.name)}<div class="muted">${esc(x.parent)}</div></td><td class="n">${x.class}</td><td class="n">${rs(x.balance)}</td><td class="n">${x.pct}%</td><td>${esc(x.last_reminder||'never')}</td>${canPay?`<td><button class="btn btn-line btn-sm" data-pay="${esc(x.id)}" data-bal="${x.balance}">+ Paid</button></td>`:''}</tr>`).join('');
+  let pick=null;
+  const choose=(id,name,bal)=>{pick=id;$('psel').innerHTML=`<b>${esc(name)}</b> · pending ${rs(bal)}`;$('pres').innerHTML='';$('pamt').focus()};
+  const draw=q=>$('ft').innerHTML=`<tr><th>Student</th><th class="n">Class</th><th class="n">Pending</th><th class="n">%</th><th>Last reminder</th>${canEnter?'<th></th>':''}</tr>`+
+    f.flagged.filter(x=>!q||x.name.toLowerCase().includes(q)||String(x.class)===q).map(x=>`<tr><td>${esc(x.name)}<div class="muted">${esc(x.parent)}</div></td><td class="n">${x.class}</td><td class="n">${rs(x.balance)}</td><td class="n">${x.pct}%</td><td>${esc(x.last_reminder||'never')}</td>${canEnter?`<td><button class="btn btn-line btn-sm" data-pay="${esc(x.id)}" data-nm="${esc(x.name)}" data-bal="${x.balance}">Enter payment</button></td>`:''}</tr>`).join('');
   draw('');$('fq').oninput=e=>draw(e.target.value.trim().toLowerCase());
-  $('ft').onclick=async e=>{const b=e.target.closest('[data-pay]');if(!b)return;
-    const amt=prompt(`Amount received (pending ${rs(b.dataset.bal)})`);if(!amt)return;
-    try{const r=await post('/api/portal/fees/payment',{student:b.dataset.pay,amount:Number(String(amt).replace(/\D/g,''))});toast(`Saved. Balance now ${rs(r.balance)}`);show('fees')}catch(err){toast(err.message)}};
+  $('ft').onclick=e=>{const b=e.target.closest('[data-pay]');if(!b)return;choose(b.dataset.pay,b.dataset.nm,b.dataset.bal);$('pq').scrollIntoView({behavior:'smooth'})};
+  if(canEnter){let t;$('pq').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{const q=e.target.value.trim();if(q.length<2){$('pres').innerHTML='';return}
+      const r=await api('/api/portal/search?q='+encodeURIComponent(q));
+      $('pres').innerHTML=r.results.slice(0,6).map(x=>`<div class="res" data-id="${esc(x.id)}" data-nm="${esc(x.name)}" data-bal="${x.balance}"><span>${esc(x.name)} · Class ${x.class}</span><span class="muted">${rs(x.balance)} pending</span></div>`).join('')||'<p class="muted">No match</p>'},250)};
+    $('pres').onclick=e=>{const r=e.target.closest('.res');if(r)choose(r.dataset.id,r.dataset.nm,r.dataset.bal)};
+    $('psave').onclick=async()=>{if(!pick)return toast('Choose a student first');const amt=Number(String($('pamt').value).replace(/\D/g,''));if(!amt)return toast('Enter the amount');
+      $('psave').disabled=true;try{const r=await post('/api/portal/fees/payment',{student:pick,amount:amt,mode:$('pmode').value,ref:$('pref').value});
+        toast(r.status==='approved'?'Payment saved':'Sent to the principal for approval');show('fees');return}catch(e){toast(e.message)}$('psave').disabled=false}}
+  if(canApprove)v.querySelectorAll('[data-ok],[data-no]').forEach(b=>b.onclick=async()=>{const ok=!!b.dataset.ok,id=b.dataset.ok||b.dataset.no;
+    let reason='';if(!ok){reason=prompt('Reason for rejecting (shown to admin)')||'';}
+    try{await post(`/api/portal/fees/entries/${encodeURIComponent(id)}/${ok?'approve':'reject'}`,{reason});toast(ok?'Approved and added to records':'Rejected');show('fees')}catch(e){toast(e.message)}});
   $('remind').onclick=async()=>{$('remind').disabled=true;try{const r=await post('/api/portal/fees/remind',{});
     $('remRes').innerHTML=`<div class="banner ok" style="margin-top:10px">${r.count} reminder(s) due today.${r.count?' Queued ones are in the WhatsApp tab.':' Everyone due was reminded in the last 3 weeks.'}</div>`}catch(e){toast(e.message)}$('remind').disabled=false};
 },
@@ -445,39 +486,90 @@ async routes(v){
 },
 async team(v){
   const d=await api('/api/portal/team'),st=S.me.status;
-  v.innerHTML=`<h2 class="h">Team & data</h2>
+  const canAssign=d.can_assign,canImport=['superadmin','principal'].includes(S.role);
+  v.innerHTML=`<h2 class="h">${canAssign?'Roles & data':'Team'}</h2>
+    ${S.role==='admin'?'<div class="banner warn">Admin has write-only access: you can view this list but cannot change roles.</div>':''}
     <div class="card"><b>System status</b>
       <div class="kv"><span>Database</span><span>${st.storage.backend==='postgres'&&st.storage.ok?'<span class="chip good">Vercel Neon Postgres</span>':'<span class="chip bad">Not connected</span>'}</span></div>
       <div class="kv"><span>Connection</span><span>${st.storage.tls?'<span class="chip good">TLS '+esc(st.storage.version||'')+' · certificate verified</span>':'<span class="chip bad">Not encrypted</span>'}</span></div>
       <div class="kv"><span>Stored data</span><span>${st.storage.encrypted?'<span class="chip good">Encrypted (AES-256-GCM)</span>':'<span class="chip warn">Not encrypted in app</span>'}</span></div>
-      <div class="kv"><span>Login OTP</span><span>${st.otp_dev_mode?'<span class="chip warn">Testing mode (code on screen)</span>':'<span class="chip good">Sent to phone</span>'}</span></div>
+      <div class="kv"><span>Login OTP</span><span>${st.otp_dev_mode?'<span class="chip warn">Testing mode (code on screen)</span>':st.otp_sender?'<span class="chip good">Sent by SMS/WhatsApp</span>':'<span class="chip bad">No OTP sender set</span>'}</span></div>
+      <div class="kv"><span>Lesson scan AI</span><span>${st.lesson_ai?'<span class="chip good">On</span>':'<span class="chip warn">Text only</span>'}</span></div>
       <div class="kv"><span>WhatsApp</span><span>${st.whatsapp==='api'?'<span class="chip good">Automatic</span>':'<span class="chip warn">One-tap (manual)</span>'}</span></div>
       <div class="kv"><span>Van GPS key</span><span>${st.van_key?'<span class="chip good">Set</span>':'<span class="chip bad">Missing</span>'}</span></div>
       <div class="kv"><span>Data loaded</span><span>${d.meta?`${d.meta.students} students · ${new Date(d.meta.loaded_at*1000).toLocaleDateString('en-IN')}`:'—'}</span></div></div>
-    <div class="card"><b>Import students from Excel</b><p class="muted" style="margin:4px 0 10px">Same format as the test workbook (sheets: Students, Marks, Staff, Routes). This replaces the student list, marks and class teachers.</p>
-      <input type="file" id="xl" accept=".xlsx"><button class="btn btn-navy btn-sm" id="imp" style="margin-left:6px">Import</button><div id="impRes"></div></div>
-    <div class="card"><b>Add a login</b><div class="f" style="margin-top:8px">
+    ${canImport?`<div class="card"><b>Import students from Excel</b><p class="muted" style="margin:4px 0 10px">Same format as the test workbook (sheets: Students, Marks, Staff, Routes). This replaces the student list, marks and class teachers.</p>
+      <input type="file" id="xl" accept=".xlsx"><button class="btn btn-navy btn-sm" id="imp" style="margin-left:6px">Import</button><div id="impRes"></div></div>`:''}
+    ${canAssign?`<div class="card"><b>Assign a role</b><div class="f" style="margin-top:8px">
       <input id="tPh" placeholder="Mobile number" inputmode="numeric"><input id="tNm" placeholder="Name">
-      <select id="tRole"><option value="teacher">Class teacher</option><option value="principal">Principal</option><option value="correspondent">Correspondent</option><option value="admin">Admin</option></select>
+      <select id="tRole"><option value="teacher">Class teacher</option><option value="principal">Principal</option><option value="correspondent">Correspondent</option><option value="admin">Admin (write-only)</option><option value="superadmin">Super admin</option></select>
       <select id="tCls">${[1,2,3,4,5,6,7,8,9,10].map(c=>`<option value="${c}">Class ${c}</option>`).join('')}</select>
-      <button class="btn btn-navy" id="tAdd">Add</button></div></div>
+      <button class="btn btn-navy" id="tAdd">Assign role</button></div></div>`:''}
     <h3 class="h">Who can log in</h3><div class="card scroll"><table><tr><th>Name</th><th>Role</th><th>Mobile</th><th></th></tr>
-      ${d.items.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(ROLE[t.role]?.n||t.role)}${t.class?' · '+t.class:''}</td><td>${esc(t.phone)}</td><td>${t.fixed?'<span class="muted">Vercel</span>':`<button class="btn btn-line btn-sm" data-del="${esc(t.phone)}|${esc(t.role)}">Remove</button>`}</td></tr>`).join('')}
+      ${d.items.map(t=>`<tr><td>${esc(t.name)}</td><td>${esc(ROLE[t.role]?.n||t.role)}${t.class?' · '+t.class:''}</td><td>${esc(t.phone)}</td><td>${t.fixed?'<span class="muted">Vercel</span>':canAssign?`<button class="btn btn-line btn-sm" data-del="${esc(t.phone)}|${esc(t.role)}">Remove</button>`:''}</td></tr>`).join('')}
       <tr><td colspan="4" class="muted">Parents log in with the parent mobile on their child's record.</td></tr></table></div>`;
-  $('tRole').onchange=e=>$('tCls').classList.toggle('hidden',e.target.value!=='teacher');
-  $('tAdd').onclick=async()=>{try{await post('/api/portal/team',{phone:$('tPh').value,name:$('tNm').value,role:$('tRole').value,cls:$('tRole').value==='teacher'?Number($('tCls').value):null});toast('Added');show('team')}catch(e){toast(e.message)}};
+  if(canAssign){$('tRole').onchange=e=>$('tCls').classList.toggle('hidden',e.target.value!=='teacher');
+  $('tAdd').onclick=async()=>{try{await post('/api/portal/team',{phone:$('tPh').value,name:$('tNm').value,role:$('tRole').value,cls:$('tRole').value==='teacher'?Number($('tCls').value):null});toast('Role assigned');show('team')}catch(e){toast(e.message)}};}
   v.querySelector('table').onclick=async e=>{const b=e.target.closest('[data-del]');if(!b||!confirm('Remove this login?'))return;const [p,r]=b.dataset.del.split('|');
     try{await api(`/api/portal/team/${p}/${r}`,{method:'DELETE'});toast('Removed');show('team')}catch(err){toast(err.message)}};
-  $('imp').onclick=async()=>{const f=$('xl').files[0];if(!f)return toast('Choose an .xlsx file');if(!confirm('Replace all student data with this file?'))return;
+  if(canImport)$('imp').onclick=async()=>{const f=$('xl').files[0];if(!f)return toast('Choose an .xlsx file');if(!confirm('Replace all student data with this file?'))return;
     try{const r=await api('/api/portal/import',{method:'POST',body:f,headers:{'Content-Type':'application/octet-stream'}});
       $('impRes').innerHTML=`<div class="banner ok" style="margin-top:10px">Imported ${r.students} students, ${r.staff} teachers, ${r.routes} routes.${r.errors.length?'<br>Skipped: '+r.errors.map(esc).join('; '):''}</div>`}catch(e){toast(e.message)}};
 },
+async lessons(v){
+  const mgmt=S.role!=='teacher';let cls=mgmt?(Number(ls.get('spv-cls'))||1):0;
+  const d=await api('/api/portal/class'+(mgmt?`?cls=${cls}`:''));cls=d.class;
+  v.innerHTML=`<h2 class="h">Lesson scan · Class ${d.class}</h2>${mgmt?`<div style="margin-bottom:10px">${classPicker('lcls',d.class)}</div>`:''}
+    <div class="card f"><p class="muted">Take photos of the textbook pages (up to 4), upload a PDF, or paste the text. Ask SPV makes a simple summary with key words (Telugu meaning), memory tips and a quick quiz.</p>
+      <select id="lsub">${['English','Telugu','Hindi','Maths','Science','Social','EVS','Other'].map(x=>`<option>${x}</option>`).join('')}</select>
+      <div class="inline"><label class="btn btn-gold btn-sm">📷 Take photo<input type="file" id="lcam" accept="image/*" capture="environment" class="hidden"></label>
+        <label class="btn btn-line btn-sm">🖼️ Upload photos / PDF<input type="file" id="lfile" accept="image/*,application/pdf" multiple class="hidden"></label></div>
+      <div id="lfiles" class="muted">No pages added</div>
+      <textarea id="ltext" placeholder="…or paste the lesson text here"></textarea>
+      <button class="btn btn-navy" id="lgo">Summarise</button></div>
+    <div id="lout"></div>
+    <h3 class="h">Shared lesson notes</h3><div class="card">${(d.lessons||[]).map(l=>`<details class="item"><summary><b>${esc(l.subject)}: ${esc(l.title)}</b> <small>${esc(l.date)} · ${esc(l.by)}</small></summary><p>${esc(l.summary)}</p></details>`).join('')||'<p class="muted">None yet.</p>'}</div>`;
+  if(mgmt)$('lcls').onchange=e=>{ls.set('spv-cls',e.target.value);show('lessons')};
+  let imgs=[],pdf=null;const list=()=>$('lfiles').textContent=(imgs.length?imgs.length+' photo(s)':'')+(pdf?(imgs.length?' + ':'')+'1 PDF':'')||'No pages added';
+  const add=async files=>{for(const f of files){try{if(f.type==='application/pdf'){if(f.size>3e6){toast('PDF must be under 3 MB');continue}pdf=await readDataURL(f)}
+      else if(f.type.startsWith('image/')){if(imgs.length>=4){toast('Up to 4 photos');break}imgs.push(await shrinkImage(f))}}catch(e){toast(e.message)}}list()};
+  $('lcam').onchange=e=>add(e.target.files);$('lfile').onchange=e=>add(e.target.files);
+  $('lgo').onclick=async()=>{$('lgo').disabled=true;$('lgo').textContent='Reading the lesson…';
+    try{const r=await post('/api/portal/lessons/summarize',{cls,subject:$('lsub').value,images:imgs,pdf,text:$('ltext').value});
+      $('lout').innerHTML=`<div class="card f"><b>Summary ${r.source==='ai'?'(AI)':'(simple, no AI)'}</b><p class="muted">Check and edit before sharing.</p><textarea id="lsum" style="min-height:260px">${esc(r.summary)}</textarea>
+        <div class="inline"><button class="btn btn-navy" id="lsend">Save & send to Class ${cls} parents</button><button class="btn btn-line" id="lsave">Save only</button></div><div id="lres"></div></div>`;
+      const save=async send=>{try{const x=await post('/api/portal/lessons',{cls,subject:$('lsub').value,summary:$('lsum').value,send});
+        $('lres').innerHTML=`<div class="banner ok">Saved. Parents see it under "Lesson notes".${send&&x.messages?` ${x.messages.sent||0} sent, ${x.messages.queued||0} waiting in the WhatsApp tab.`:''}</div>${x.group_link?`<a class="btn btn-wa" href="${esc(x.group_link)}" target="_blank" rel="noopener">Share to class WhatsApp group</a>`:''}`}catch(e){toast(e.message)}};
+      $('lsend').onclick=()=>save(true);$('lsave').onclick=()=>save(false);$('lout').scrollIntoView({behavior:'smooth'});
+    }catch(e){toast(e.message)}$('lgo').disabled=false;$('lgo').textContent='Summarise'};
+},
+async practicals(v){
+  const mgmt=S.role!=='teacher';
+  if(mgmt&&!ls.get('spv-pcls')){const d=await api('/api/portal/practicals'),sv=d.school,w=sv.week;
+    const months=[...new Set(d.weeks.map(x=>x.month))];
+    v.innerHTML=`<h2 class="h">Practical sessions</h2><p class="muted">Every week one practical activity per class, inspired by schools in Japan and Europe and linked to India and Kota.</p>
+      <div class="card"><b>Week ${sv.current}: ${esc(w.theme)}</b><p class="muted" style="margin:4px 0">${esc(w.inspired)}<br>Kota link: ${esc(w.local)}</p>
+        <div class="tiles" style="margin-top:8px"><div class="tile"><small>Classes done</small><b>${sv.done_count}/${sv.total}</b></div></div>
+        ${sv.classes.map(c=>`<div class="res" data-c="${c.class}"><span><b>Class ${c.class}</b> <span class="muted">${esc(c.activity)}</span></span>${c.done?`<span class="chip good">done</span>`:'<span class="chip mute">pending</span>'}</div>`).join('')}</div>
+      <h3 class="h">Full year plan (40 weeks)</h3>${months.map(m=>`<details class="card"><summary><b>${m}</b> · ${d.weeks.filter(x=>x.month===m).map(x=>esc(x.theme)).join(' · ')}</summary>${d.weeks.filter(x=>x.month===m).map(x=>`<div class="item"><b>Week ${x.no}: ${esc(x.theme)}</b><br><small>${esc(x.inspired)} · Kota: ${esc(x.local)}</small>
+        <div class="scroll"><table>${Object.entries(x.activities).map(([b,a])=>`<tr><td style="white-space:nowrap">Class ${b}</td><td>${esc(a)}</td></tr>`).join('')}</table></div></div>`).join('')}</details>`).join('')}`;
+    v.querySelectorAll('[data-c]').forEach(r=>r.onclick=()=>{ls.set('spv-pcls',r.dataset.c);show('practicals')});return}
+  const cls=mgmt?Number(ls.get('spv-pcls')):0;const d=await api('/api/portal/practicals'+(mgmt?`?cls=${cls}`:''));const cur=d.weeks.find(w=>w.no===d.current);
+  v.innerHTML=`${mgmt?'<button class="btn btn-line btn-sm" id="pback">← All classes</button>':''}<h2 class="h" style="margin-top:${mgmt?12:2}px">Practicals · Class ${d.class} <small class="muted">(band ${d.band})</small></h2>
+    <div class="card" style="border:2px solid var(--gold)"><small class="muted">This week · Week ${cur.no} · ${cur.month}</small><h3 class="h" style="margin:4px 0">${esc(cur.theme)}</h3>
+      <p style="font-size:1rem">${esc(cur.activity)}</p><p class="muted" style="margin-top:6px">${esc(cur.inspired)}<br>Kota / India link: ${esc(cur.local)}</p>
+      ${cur.done?`<div class="banner ok" style="margin-top:10px">Done by ${esc(cur.done.by)}${cur.done.note?': '+esc(cur.done.note):''}</div>`:`<div class="f" style="margin-top:10px"><input id="pnote" placeholder="What did the class do? (optional)" maxlength="300"><button class="btn btn-navy" id="pdone">Mark this week done</button></div>`}</div>
+    <h3 class="h">All 40 weeks for Class ${d.class}</h3><div class="card">${d.weeks.map(w=>`<div class="item"><div class="inline" style="justify-content:space-between"><b>Wk ${w.no} · ${w.month}: ${esc(w.theme)}</b>${w.done?'<span class="chip good">done</span>':w.no<d.current?'<span class="chip mute">not marked</span>':''}</div><p>${esc(w.activity)}</p><small>${esc(w.inspired)}</small></div>`).join('')}</div>`;
+  if(mgmt)$('pback').onclick=()=>{ls.del('spv-pcls');show('practicals')};
+  if(!cur.done)$('pdone').onclick=async()=>{try{await post('/api/portal/practicals/done',{no:cur.no,cls:d.class,note:$('pnote').value});toast('Marked done');show('practicals')}catch(e){toast(e.message)}};
+},
 async ask(v){
   const chips={parent:["How is my child doing?","Fee balance","Where is the van?","Homework today","నా బిడ్డ హాజరు?"],
-    teacher:["Today's attendance","My class students","Class marks","Latest circular","Where are the vans?"],
-    principal:["Today's attendance","Fee overview","Fee defaulters","Attendance last week","Where are the vans?"],
+    teacher:["Today's attendance","My class students","Practical this week","Latest circular","Where are the vans?"],
+    principal:["Today's attendance","Fee collection today","Fee defaulters","Practicals this week","Where are the vans?"],
+    superadmin:["Today's attendance","Fee collection today","Fee defaulters","Practicals this week","WhatsApp outbox"],
     correspondent:["Today's attendance","Fee overview","Fee defaulters","Attendance last week"],
-    admin:["Fee overview","WhatsApp outbox","Today's attendance","Where are the vans?"]}[S.role];
+    admin:["Fee collection today","WhatsApp outbox","Today's attendance","Where are the vans?"]}[S.role];
   v.innerHTML=`<div class="chat"><h2 class="h">Ask SPV</h2><div class="log" id="log"></div><div class="chips" id="chips"></div>
     <form class="f" id="cf" style="grid-template-columns:1fr auto"><input id="cq" placeholder="Ask in English or తెలుగు…" maxlength="2000"><button class="btn btn-navy">Send</button></form></div>`;
   const add=(t,c)=>{const d=document.createElement('div');d.className='bub '+c;d.textContent=t;$('log').appendChild(d);d.scrollIntoView({block:'end'});return d};
