@@ -8,6 +8,7 @@ pg8000
 openpyxl
 cryptography
 pypdf
+webauthn
 pytest
 # optional, only for LLM_PROVIDER=azure:
 # langchain-azure-ai

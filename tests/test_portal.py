@@ -49,7 +49,7 @@ def client(tmp_path_factory):
         "SPV_STORE_FILE": str(tmp_path_factory.mktemp("db") / "store.json"),
         "OTP_DEV_MODE": "true", "JWT_SECRET": "test-secret", "PRINCIPAL_PHONES": PRINCIPAL,
         "SUPERADMIN_PHONES": PRINCIPAL, "ADMIN_PHONES": DUAL_PHONE, "CORRESPONDENT_PHONES": PRINCIPAL, "VAN_KEY": "vankey", "CRON_SECRET": "cron",
-        "LLM_PROVIDER": "offline", "DATA_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        "LLM_PROVIDER": "offline", "ADMIN_PASSKEY": "false", "DATA_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
         "SEED_DATA": base64.b64encode(gzip.compress(Path(SEED).read_bytes())).decode()})
     for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID"):
         os.environ.pop(k, None)
@@ -420,3 +420,63 @@ def test_admin_only_from_office_internet(client, monkeypatch):
     assert client.get("/api/portal/team", headers=dict(a, **{"X-Forwarded-For": "49.204.10.25"})).status_code == 200
     r = client.get("/api/portal/team", headers=dict(a, **{"X-Forwarded-For": "106.200.1.9"}))
     assert r.status_code == 403 and "office internet" in r.json()["detail"]
+
+
+def test_admin_needs_passkey_on_approved_device(client, monkeypatch):
+    a, _ = login(client, DUAL_PHONE, "admin")          # approved device, passkey switched off in tests
+    monkeypatch.setenv("ADMIN_PASSKEY", "true")
+    r = client.get("/api/portal/team", headers=a)
+    assert r.status_code == 403 and r.json()["detail"].startswith("[passkey-setup]")
+    o = client.post("/api/portal/passkey/register/options", headers=a).json()
+    assert o["challenge"] and o["rp"]["id"] == "testserver" and o["authenticatorSelection"]["userVerification"] == "required"
+    other = dict(a, **{"X-Device": "home-phone-" + "c" * 30})
+    assert client.post("/api/portal/passkey/register/options", headers=other).status_code == 403
+    bad = client.post("/api/portal/passkey/register/verify", headers=a, json={"credential": {"id": "x"}})
+    assert bad.status_code == 400
+    p, _ = login(client, PRINCIPAL, "principal")
+    assert client.get("/api/portal/dashboard", headers=p).status_code == 200   # other roles unaffected
+
+
+def _sign(body: bytes) -> str:
+    import hashlib, hmac
+    return "sha256=" + hmac.new(b"app-secret", body, hashlib.sha256).hexdigest()
+
+
+def _wa_msg(sender, text):
+    return json.dumps({"entry": [{"changes": [{"value": {"messages": [
+        {"from": "91" + sender, "type": "text", "text": {"body": text}}]}}]}]}).encode()
+
+
+def test_free_whatsapp_login(client, monkeypatch):
+    monkeypatch.setenv("WA_LOGIN_NUMBER", "919000012345")
+    monkeypatch.setenv("WHATSAPP_APP_SECRET", "app-secret")
+    monkeypatch.setenv("WHATSAPP_VERIFY_TOKEN", "vt")
+    assert client.get("/api/auth/config").json()["wa_login"] is True
+    assert client.get("/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=vt&hub.challenge=42").text == "42"
+    assert client.get("/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=no&hub.challenge=42").status_code == 403
+    import store
+    store.delete(f"wal_last:{PARENT_A}")
+    r = client.post("/api/auth/wa/start", json={"phone": PARENT_A}).json()
+    assert r["link"].startswith("https://wa.me/919000012345?text=LOGIN%20SPV%20") and len(r["code"]) == 6
+    assert client.get(f"/api/auth/wa/status?poll={r['poll']}").json()["status"] == "pending"
+    good = _wa_msg(PARENT_A, r["text"])
+    assert client.post("/api/whatsapp/webhook", content=good, headers={"X-Hub-Signature-256": "sha256=00"}).status_code == 401
+    wrong = _wa_msg(OTHER_PARENT, r["text"])                  # someone else sends the code
+    assert client.post("/api/whatsapp/webhook", content=wrong, headers={"X-Hub-Signature-256": _sign(wrong)}).json()["verified"] == 0
+    assert client.get(f"/api/auth/wa/status?poll={r['poll']}").json()["status"] == "pending"
+    assert client.get("/api/auth/wa/status?poll=guess").json()["status"] == "expired"
+    assert client.post("/api/whatsapp/webhook", content=good, headers={"X-Hub-Signature-256": _sign(good)}).json()["verified"] == 1
+    st = client.get(f"/api/auth/wa/status?poll={r['poll']}").json()
+    assert st["status"] == "verified" and st["phone"] == PARENT_A and st["token"]
+    assert client.get(f"/api/auth/wa/status?poll={r['poll']}").json()["status"] == "expired"   # one-time
+    h = {"Authorization": f"Bearer {st['token']}", "X-Role": "parent"}
+    assert client.get("/api/portal/parent", headers=h).json()["children"][0]["name"] == KID_A["name"]
+    assert client.post("/api/auth/wa/start", json={"phone": "9000000001"}).status_code == 404
+
+
+def test_sessions_last_a_year():
+    import auth, base64, json as j
+    t = auth.make_token("9876543210")
+    body = j.loads(base64.urlsafe_b64decode(t.split(".")[0] + "=="))
+    import time
+    assert body["exp"] - time.time() > 360 * 86400

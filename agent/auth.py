@@ -29,7 +29,7 @@ import time
 import notify
 import store
 
-TOKEN_DAYS = 90
+TOKEN_DAYS = 365  # stay logged in for a year on that phone (fewer logins = no OTP cost)
 # Per-request facts set by the API middleware (portal_api.install): device id, device label, client IP.
 REQUEST: contextvars.ContextVar = contextvars.ContextVar("spv_request", default={})
 IST_OFFSET = 5.5 * 3600
@@ -176,7 +176,7 @@ def read_token(token: str) -> str:
         raise AuthError("Please log in")
 
 
-def session(token: str, role: str | None) -> dict:
+def session(token: str, role: str | None, passkey: bool = True) -> dict:
     """Validate the token and the role the app wants to act as. Returns the active role record."""
     phone = read_token(token)
     roles = roles_for(phone)
@@ -185,7 +185,7 @@ def session(token: str, role: str | None) -> dict:
     pick = next((r for r in roles if r["role"] == role), None) if role else roles[0]
     if not pick:
         raise AuthError("You do not have access to this section.", 403)
-    office_check(phone, pick["role"])
+    office_check(phone, pick["role"], passkey)
     return dict(pick, phone=phone, all_roles=[r["role"] for r in roles])
 
 
@@ -224,7 +224,24 @@ def _in_office_hours() -> bool:
     return t.tm_wday != 6 and start <= t.tm_hour * 60 + t.tm_min <= end
 
 
-def office_check(phone: str, role: str):
+def device_code(devref: str) -> str:
+    """Short code shown on the admin's screen and in the principal's list, to match the right device."""
+    return f"{devref[:4]}-{devref[4:8]}".upper()
+
+
+def current_device(phone: str) -> str:
+    """The approved device id (devref) of this request, or raise."""
+    dev = REQUEST.get().get("device", "")
+    if len(dev) < 20:
+        raise AuthError("Admin access works only on an approved office device.", 403)
+    ref = device_ref(dev, phone)
+    rec = next((d for d in (store.get("devices", []) or []) if d["id"] == ref), None)
+    if not rec or rec["status"] != "approved":
+        raise AuthError("This device is not approved for admin work.", 403)
+    return ref
+
+
+def office_check(phone: str, role: str, passkey: bool = True):
     """The admin role works only from the school office:
        1. an office device approved by the principal (ADMIN_DEVICE_APPROVAL, on by default)
        2. optional: the office internet connection only (OFFICE_IPS, e.g. '49.204.10.20' or a range)
@@ -245,6 +262,9 @@ def office_check(phone: str, role: str):
     devices = store.get("devices", []) or []
     rec = next((d for d in devices if d["h"] == h and d["phone"] == phone), None)
     if rec and rec["status"] == "approved":
+        if passkey:
+            import passkeys
+            passkeys.require(phone, rec["id"])  # fingerprint / Windows Hello on this device
         return
     if not rec:
         devices.insert(0, {"id": device_ref(dev, phone), "h": h, "phone": phone, "label": req.get("label", "")[:80],
@@ -253,8 +273,8 @@ def office_check(phone: str, role: str):
         audit(phone, "admin_device_request", {"device": device_ref(dev, phone)})
     if rec and rec["status"] == "revoked":
         raise AuthError("This device was removed from admin access. Please use the office device.", 403)
-    raise AuthError("This device is not yet approved for admin work. Ask the principal to approve it "
-                    "(Roles & data > Admin office devices), then try again.", 403)
+    raise AuthError(f"This device (code {device_code(device_ref(dev, phone))}) is not yet approved for admin work. "
+                    "Ask the principal to approve it (Roles & data > Admin office devices), then try again.", 403)
 
 
 def decide_device(dev_id: str, approve: bool, by_phone: str) -> dict:
@@ -264,8 +284,11 @@ def decide_device(dev_id: str, approve: bool, by_phone: str) -> dict:
         raise AuthError("Device not found", 404)
     rec.update(status="approved" if approve else "revoked", by=by_phone, decided_at=int(time.time()))
     store.set("devices", devices)
+    if not approve:
+        import passkeys
+        passkeys.remove_for_device(dev_id)  # a removed device loses its fingerprint login too
     audit(by_phone, "device_" + rec["status"], {"device": dev_id, "admin": rec["phone"]})
-    return {k: v for k, v in rec.items() if k != "h"}
+    return {k: v for k, v in rec.items() if k != "h"} | {"code": device_code(rec["id"])}
 
 
 def audit(phone, action, detail=None):

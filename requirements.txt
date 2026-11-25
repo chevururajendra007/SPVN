@@ -5,5 +5,6 @@ pg8000          # Postgres (Neon) - pure Python driver
 openpyxl        # Excel import in the admin portal
 cryptography    # AES-256-GCM encryption of stored data
 pypdf           # read text from lesson PDFs
+webauthn        # admin passkeys (fingerprint / Windows Hello)
 langchain-core
 langchain-ollama

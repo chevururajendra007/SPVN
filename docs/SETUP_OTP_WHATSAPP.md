@@ -1,40 +1,49 @@
-# Switch on real OTP login and automatic WhatsApp
+# Login without paying for OTPs
 
-Until these are set, the portal runs in **testing mode** (OTP shown on screen) and WhatsApp messages
-use **one-tap send** (the teacher/office taps "Send on WhatsApp" on their own phone).
+## How parents log in (free)
+1. Open the portal, type the mobile number, tap **Verify on WhatsApp (free)**.
+2. WhatsApp opens with a ready message `LOGIN SPV 123456` to the school's **portal WhatsApp number**. Tap **Send**.
+3. Go back to the portal: logged in. The phone stays logged in for **1 year**.
 
-## 1. WhatsApp Business: login OTP and all school messages (default)
-1. Create a Meta Business account and a WhatsApp Business **Cloud API** app (developers.facebook.com).
-   Use a mobile number that is not already on the WhatsApp app (e.g. a new school SIM).
-2. Create these message templates (language English) and wait for approval:
-   - `school_notice` - category **Utility**, body:
-     `Sri Pragathi Vidyaniketan, Kota: {{1}}`
-     (the app puts the full absent / fee / homework / update text into {{1}})
-   - `login_otp` - category **Authentication** (Meta's fixed OTP text with a copy-code button)
-3. Create a permanent System User token with `whatsapp_business_messaging` permission.
-4. Vercel environment variables:
-   - `WHATSAPP_TOKEN` (Sensitive), `WHATSAPP_PHONE_ID` (the phone number ID, not the number)
-   - `WA_TPL_DEFAULT` = `school_notice`
-   - `WA_TPL_OTP` = `login_otp`  (login OTP goes on WhatsApp only)
-   - `OTP_DEV_MODE` = `false`
-5. Redeploy. Admin → Roles & data → System status shows "WhatsApp: Automatic".
+Free because messages that parents send to a business number cost nothing, and our "Verified" reply
+is inside the free 24-hour window. Secure because WhatsApp already verified the sender's number, Meta
+signs every webhook, and the code works once, for 10 minutes, only from the typed mobile number.
 
-## 2. Optional: SMS OTP instead (Fast2SMS)
-Only if some parents do not use WhatsApp. Set `OTP_CHANNEL=both` (WhatsApp first, then SMS) or `sms`.
+## One-time setup (school / Rajendra)
+The school's existing **normal WhatsApp stays as it is**. The portal needs its own number on the free
+WhatsApp Cloud API (Meta charges nothing for receiving messages or for free replies).
 
-1. Sign up at fast2sms.com with the school's mobile and email, and recharge (minimum Rs.100).
-2. Complete **DLT registration** (Fast2SMS helps free): a sender ID (e.g. `SPVKTA`) and one
-   transactional OTP template, for example:
-   `Your SPV School login OTP is {#var#}. Valid for 5 minutes. Do not share it. - Sri Pragathi Vidyaniketan`
-3. In Fast2SMS create a **Smart OTP** template using that DLT template. Note its **OTP ID**.
-4. Copy the **API key** (Dev API).
-5. Vercel → spvn → Settings → Environment Variables:
-   - `FAST2SMS_API_KEY` = the API key (Sensitive)
-   - `FAST2SMS_OTP_ID` = the OTP ID
-6. Redeploy. Log in once with your own number to confirm the SMS arrives.
+1. Buy a new prepaid SIM for the portal (any operator). It only needs to receive one SMS/call for
+   verification. Do NOT install WhatsApp on it.
+2. Go to business.facebook.com, create a Business portfolio for "Sri Pragathi Vidyaniketan".
+3. Go to developers.facebook.com, **Create app** > type **Business** > add the **WhatsApp** product.
+4. WhatsApp > API Setup > **Add phone number**: enter the new SIM's number, display name
+   "SPV School Portal", verify with the code.
+5. Note the **Phone number ID**.
+6. Business settings > Users > System users > add a system user (Admin), **Generate token** for this app
+   with `whatsapp_business_messaging` and `whatsapp_business_management`, never-expiring. Copy the token.
+7. App settings > Basic > copy the **App secret**.
+8. WhatsApp > Configuration > Webhook:
+   - Callback URL: `https://spvn.vercel.app/api/whatsapp/webhook`
+   - Verify token: any long random word you choose (e.g. `spv-webhook-7Kq2...`)
+   - Click Verify and save, then **Subscribe** to the `messages` field.
+   (Add the Vercel variables in step 9 **before** clicking Verify.)
+9. Vercel > spvn > Settings > Environment Variables (Sensitive), then Redeploy:
+   - `WA_LOGIN_NUMBER` = the portal number with 91, e.g. `919876543210`
+   - `WHATSAPP_TOKEN` = token from step 6
+   - `WHATSAPP_PHONE_ID` = phone number ID from step 5
+   - `WHATSAPP_APP_SECRET` = app secret from step 7
+   - `WHATSAPP_VERIFY_TOKEN` = the verify token from step 8
+   - `OTP_DEV_MODE` = `false` (removes the on-screen testing code)
+10. Test: log in with your own number using "Verify on WhatsApp".
 
+Tip: keep the app in "Development" mode only for tests with up to 5 numbers; publish the app (Live) and
+complete Business verification for all parents.
 
-Costs (check current rates): WhatsApp India about Rs.0.115 per authentication or utility template + 18% GST.
-Free on WhatsApp: any message sent within 24 hours after the parent last messaged the school number, and
-non-template replies in that window. A parent logs in about once in 90 days (session length), so login OTP
-costs roughly Rs.0.14 per parent per quarter. Fast2SMS OTP is about Rs.0.11-0.25 per SMS.
+## Paid messages (optional)
+Absent / fee / homework alerts sent by the school to a parent who has not messaged in 24 hours need an
+approved template and cost about Rs.0.115 + GST each. Until then teachers send them free with one tap
+from their own WhatsApp (current setup). Template setup: create a Utility template `school_notice`
+with body `Sri Pragathi Vidyaniketan, Kota: {{1}}` and set `WA_TPL_DEFAULT=school_notice`.
+Paid OTP by WhatsApp template (`WA_TPL_OTP`) or SMS (`OTP_CHANNEL=sms`, Fast2SMS) stays available but is
+not needed.

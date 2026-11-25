@@ -141,8 +141,24 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
       <p class="sub">Parents, class teachers, principal, correspondent and admin. Use your registered mobile number.</p>
       <label for="ph">Mobile number</label>
       <div class="row"><span class="cc">+91</span><input id="ph" inputmode="numeric" autocomplete="tel-national" maxlength="10" placeholder="10-digit number"></div>
+      <button class="btn btn-wa full hidden" id="waBtn">🟢 Verify on WhatsApp (free)</button>
       <button class="btn btn-gold full" id="sendBtn">Send OTP</button>
       <div class="msg-err" id="err1" role="alert"></div>
+    </div>
+    <div class="lbox hidden" id="stepWa">
+      <h2>Verify on WhatsApp</h2>
+      <p class="sub">1. Tap <b>Open WhatsApp</b>. 2. Press <b>Send</b> on the ready message (from the WhatsApp of <b id="waPh"></b>). 3. Come back here - you will be logged in automatically.</p>
+      <a class="btn btn-wa full" id="waOpen" target="_blank" rel="noopener">Open WhatsApp</a>
+      <p class="sub" style="margin-top:12px">Message: <b id="waText"></b> <span id="waWait">· waiting…</span></p>
+      <button class="btn btn-sm" style="color:#c9d1ec" id="waBack">← Change number</button>
+      <div class="msg-err" id="err4" role="alert"></div>
+    </div>
+    <div class="lbox hidden" id="stepPk">
+      <h2>🔐 Admin security</h2>
+      <p class="sub" id="pkMsg"></p>
+      <button class="btn btn-gold full" id="pkBtn"></button>
+      <button class="btn btn-sm" style="color:#c9d1ec;margin-top:8px" id="pkOut">Use another role / log out</button>
+      <div class="msg-err" id="err5" role="alert"></div>
     </div>
     <div class="lbox hidden" id="stepOtp">
       <h2>Enter OTP</h2>
@@ -232,23 +248,63 @@ async function sendOtp(){
 async function verify(){
   const code=$('otp').value.replace(/\D/g,'');if(code.length<6){$('err2').textContent='Enter the 6-digit OTP';return}
   $('verifyBtn').disabled=true;
-  try{const r=await post('/api/auth/verify',{phone,code});S.token=r.token;ls.set('spv-token',r.token);
+  try{afterLogin(await post('/api/auth/verify',{phone,code}))}catch(e){$('err2').textContent=e.message}
+  $('verifyBtn').disabled=false;
+}
+function afterLogin(r){S.token=r.token;ls.set('spv-token',r.token);
     S.roles=r.roles;if(r.roles.length===1)return enter(r.roles[0].role);
-    $('stepOtp').classList.add('hidden');$('stepRole').classList.remove('hidden');$('roleList').innerHTML='';
+    ['stepOtp','stepWa','stepPhone'].forEach(i=>$(i).classList.add('hidden'));$('stepRole').classList.remove('hidden');$('roleList').innerHTML='';
     r.roles.forEach(x=>{const b=document.createElement('button');b.className='rolebtn';
       b.innerHTML=`<span class="i">${ROLE[x.role].i}</span><div><b>${ROLE[x.role].n}${x.class?' · Class '+x.class:''}</b><small>${esc(x.name)} · <span class="te">${ROLE[x.role].te}</span></small></div>`;
       b.onclick=()=>enter(x.role);$('roleList').appendChild(b)});
-  }catch(e){$('err2').textContent=e.message}
-  $('verifyBtn').disabled=false;
+}
+// ---- free login: Verify on WhatsApp
+let waTimer=null;
+fetch('/api/auth/config').then(r=>r.json()).then(c=>{if(c.wa_login)$('waBtn').classList.remove('hidden');
+  if(c.wa_login&&!c.otp_sender&&!c.otp_dev_mode)$('sendBtn').classList.add('hidden')}).catch(()=>{});
+$('waBtn').onclick=async()=>{phone=$('ph').value.replace(/\D/g,'').slice(-10);$('err1').textContent='';
+  if(!/^[6-9]\d{9}$/.test(phone)){$('err1').textContent='Enter a valid 10-digit mobile number';return}
+  try{const r=await post('/api/auth/wa/start',{phone});
+    $('stepPhone').classList.add('hidden');$('stepWa').classList.remove('hidden');$('waPh').textContent='+91 '+phone;
+    $('waText').textContent=r.text;$('waOpen').href=r.link;$('err4').textContent='';clearInterval(waTimer);
+    const until=Date.now()+r.expires_in*1000;
+    waTimer=setInterval(async()=>{if(Date.now()>until){clearInterval(waTimer);$('waWait').textContent='· expired, please start again';return}
+      try{const st=await (await fetch('/api/auth/wa/status?poll='+encodeURIComponent(r.poll),{cache:'no-store'})).json();
+        if(st.status==='verified'){clearInterval(waTimer);afterLogin(st)}else if(st.status==='expired'){clearInterval(waTimer);$('waWait').textContent='· expired, please start again'}}catch{}},2000);
+  }catch(e){$('err1').textContent=e.message}};
+$('waBack').onclick=()=>{clearInterval(waTimer);$('stepWa').classList.add('hidden');$('stepPhone').classList.remove('hidden')};
+// ---- admin passkey (fingerprint / Windows Hello)
+const b2u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const u2b=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((s.length+3)%4)),c=>c.charCodeAt(0));
+async function passkeyStep(kind,msg){
+  ['stepPhone','stepOtp','stepRole','stepWa'].forEach(i=>$(i).classList.add('hidden'));$('main').classList.add('hidden');$('login').classList.remove('hidden');
+  $('stepPk').classList.remove('hidden');$('pkMsg').textContent=msg.replace(/^\[[a-z-]+\]\s*/,'');$('err5').textContent='';
+  $('pkBtn').textContent=kind==='setup'?'Set up fingerprint / Windows Hello':'Unlock with fingerprint / Windows Hello';
+  $('pkBtn').onclick=async()=>{if(!window.PublicKeyCredential){$('err5').textContent='This browser does not support fingerprint login. Use Chrome or Edge on the office device.';return}
+    $('pkBtn').disabled=true;try{
+      if(kind==='setup'){const o=await post('/api/portal/passkey/register/options',{});
+        o.challenge=u2b(o.challenge);o.user.id=u2b(o.user.id);(o.excludeCredentials||[]).forEach(c=>c.id=u2b(c.id));
+        const c=await navigator.credentials.create({publicKey:o});
+        await post('/api/portal/passkey/register/verify',{credential:{id:c.id,rawId:b2u(c.rawId),type:c.type,authenticatorAttachment:c.authenticatorAttachment,clientExtensionResults:{},
+          response:{clientDataJSON:b2u(c.response.clientDataJSON),attestationObject:b2u(c.response.attestationObject),transports:c.response.getTransports?c.response.getTransports():[]}}});
+      }else{const o=await post('/api/portal/passkey/unlock/options',{});
+        o.challenge=u2b(o.challenge);(o.allowCredentials||[]).forEach(c=>c.id=u2b(c.id));
+        const c=await navigator.credentials.get({publicKey:o});
+        await post('/api/portal/passkey/unlock/verify',{credential:{id:c.id,rawId:b2u(c.rawId),type:c.type,clientExtensionResults:{},
+          response:{clientDataJSON:b2u(c.response.clientDataJSON),authenticatorData:b2u(c.response.authenticatorData),signature:b2u(c.response.signature),userHandle:c.response.userHandle?b2u(c.response.userHandle):null}}});}
+      $('stepPk').classList.add('hidden');toast(kind==='setup'?'Fingerprint login set up':'Unlocked');enter('admin');
+    }catch(e){$('err5').textContent=e.name==='NotAllowedError'?'Cancelled or not recognised. Please try again.':e.message}$('pkBtn').disabled=false};
+  $('pkOut').onclick=()=>{$('stepPk').classList.add('hidden');if(S.roles&&S.roles.length>1){$('stepRole').classList.remove('hidden');ls.del('spv-role')}else logout()};
 }
 function logout(){clearInterval(S.timer);ls.del('spv-token');ls.del('spv-role');S={token:null,role:null,chat:[]};
   $('main').classList.add('hidden');$('login').classList.remove('hidden');
-  ['stepOtp','stepRole'].forEach(i=>$(i).classList.add('hidden'));$('stepPhone').classList.remove('hidden')}
+  ['stepOtp','stepRole','stepWa','stepPk'].forEach(i=>$(i).classList.add('hidden'));$('stepPhone').classList.remove('hidden')}
 $('logout').onclick=logout;
 
 async function enter(role){
   S.role=role;ls.set('spv-role',role);
   try{S.me=await api('/api/portal/me')}catch(e){
+    if(/^\[passkey-(setup|unlock)\]/.test(e.message))return passkeyStep(e.message.includes('setup')?'setup':'unlock',e.message);
     if(S.token&&S.roles&&S.roles.length>1){$('err3').textContent=e.message;$('stepRole').classList.remove('hidden');$('stepOtp').classList.add('hidden');ls.del('spv-role');return}
     const msg=e.message;if(S.token)toast(msg);logout();$('err1').textContent=msg;return}
   S.role=S.me.active.role;ls.set('spv-role',S.role);
@@ -521,7 +577,7 @@ async team(v){
     try{await api(`/api/portal/team/${p}/${r}`,{method:'DELETE'});toast('Removed');show('team')}catch(err){toast(err.message)}};
   if(canImport){const dl=async()=>{const r=await api('/api/portal/devices');
       $('devList').innerHTML=(r.ip_lock?'<div class="banner ok">Office internet lock is ON.</div>':`<div class="banner warn">Office internet lock is off. To allow the admin only on the office connection, set OFFICE_IPS in Vercel to the office IP (open this page on the office Wi-Fi: your IP now is <b>${esc(r.your_ip||'unknown')}</b>).</div>`)+
-        (r.items.map(x=>`<div class="res" style="cursor:default"><span><b>${esc(x.label||'Device')}</b> · admin ${esc(x.phone)}<br><small class="muted">${esc(x.id)} · ${new Date(x.at*1000).toLocaleString('en-IN')} · IP ${esc(x.ip||'')}</small></span>
+        (r.items.map(x=>`<div class="res" style="cursor:default"><span><b>${esc(x.label||'Device')}</b> · code <b>${esc(x.code)}</b> · admin ${esc(x.phone)}${x.passkey?' · <span class="chip good">fingerprint set</span>':''}<br><small class="muted">${esc(x.id)} · ${new Date(x.at*1000).toLocaleString('en-IN')} · IP ${esc(x.ip||'')}</small></span>
           <span class="inline"><span class="chip ${x.status==='approved'?'good':x.status==='revoked'?'bad':'warn'}">${esc(x.status)}</span>${x.status!=='approved'?`<button class="btn btn-navy btn-sm" data-dev="${esc(x.id)}" data-act="approve">Approve</button>`:''}${x.status!=='revoked'?`<button class="btn btn-line btn-sm" data-dev="${esc(x.id)}" data-act="revoke">Remove</button>`:''}</span></div>`).join('')||'<p class="muted">No admin device has asked yet.</p>');
       $('devList').querySelectorAll('[data-dev]').forEach(b=>b.onclick=async()=>{try{await post(`/api/portal/devices/${b.dataset.dev}/${b.dataset.act}`,{});toast(b.dataset.act==='approve'?'Device approved':'Device removed');dl()}catch(e){toast(e.message)}})};
     dl().catch(e=>$('devList').textContent=e.message)}

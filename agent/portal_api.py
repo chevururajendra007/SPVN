@@ -14,6 +14,7 @@ Permissions (least privilege):
   Teachers never receive amounts; parents see only their own children's fees.
   teacher        own class only;  parent: own children only
 """
+import json
 import os
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -24,7 +25,9 @@ import notify
 import school
 import store
 import lessons
+import passkeys
 import practicals
+import wa_login
 import van
 from app_agent import role_chat
 
@@ -43,14 +46,16 @@ def install(app):
         ip = request.headers.get("x-real-ip") or (fwd.split(",")[0].strip() if fwd else "") or \
             (request.client.host if request.client else "")
         auth.REQUEST.set({"device": request.headers.get("x-device", "")[:100],
-                          "label": request.headers.get("x-device-label", "")[:80], "ip": ip})
+                          "label": request.headers.get("x-device-label", "")[:80], "ip": ip,
+                          "host": request.headers.get("x-forwarded-host") or request.headers.get("host", ""),
+                          "proto": request.headers.get("x-forwarded-proto") or request.url.scheme})
         return await call_next(request)
 
 
-def ctx(authorization: str | None, x_role: str | None, allow: tuple) -> dict:
+def ctx(authorization: str | None, x_role: str | None, allow: tuple, passkey: bool = True) -> dict:
     token = (authorization or "").removeprefix("Bearer ").strip()
     try:
-        c = auth.session(token, x_role)
+        c = auth.session(token, x_role, passkey)
     except auth.AuthError as e:
         raise HTTPException(e.status, str(e))
     if c["role"] not in allow:
@@ -88,6 +93,97 @@ def verify(body: VerifyIn):
         return auth.verify_otp(body.phone, body.code)
     except auth.AuthError as e:
         raise HTTPException(e.status, str(e))
+
+
+@router.get("/api/auth/config")
+def auth_config():
+    """What the login page should offer (no secrets)."""
+    return {"wa_login": wa_login.enabled(), "otp_sender": notify.otp_ready(), "otp_dev_mode": auth.dev_mode()}
+
+
+class WaStartIn(PhoneIn):
+    pass
+
+
+@router.post("/api/auth/wa/start")
+def wa_start(body: WaStartIn):
+    if not wa_login.enabled():
+        raise HTTPException(503, "WhatsApp login is not set up yet.")
+    try:
+        return wa_login.start(body.phone)
+    except auth.AuthError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@router.get("/api/auth/wa/status")
+def wa_status(poll: str):
+    return wa_login.status(poll[:64])
+
+
+@router.get("/api/whatsapp/webhook")
+def wa_webhook_verify(request: Request):
+    q = request.query_params
+    if q.get("hub.mode") == "subscribe" and os.getenv("WHATSAPP_VERIFY_TOKEN") and \
+            q.get("hub.verify_token") == os.getenv("WHATSAPP_VERIFY_TOKEN"):
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(q.get("hub.challenge", ""))
+    raise HTTPException(403, "verification failed")
+
+
+@router.post("/api/whatsapp/webhook")
+async def wa_webhook(request: Request):
+    raw = await request.body()
+    if not wa_login.check_signature(raw, request.headers.get("x-hub-signature-256")):
+        raise HTTPException(401, "bad signature")
+    try:
+        payload = json.loads(raw)
+    except ValueError:
+        raise HTTPException(400, "bad json")
+    return {"ok": True, "verified": wa_login.handle_webhook(payload)}
+
+
+# ---------------------------------------------------------------- admin passkey (fingerprint / Windows Hello)
+class CredIn(BaseModel):
+    credential: dict
+
+
+def _pk_ctx(authorization, x_role):
+    c = ctx(authorization, x_role, ("admin",), passkey=False)
+    try:
+        return c, auth.current_device(c["phone"])
+    except auth.AuthError as e:
+        raise HTTPException(e.status, str(e))
+
+
+def _pk(fn, *a):
+    try:
+        return fn(*a)
+    except auth.AuthError as e:
+        raise HTTPException(e.status, str(e))
+
+
+@router.post("/api/portal/passkey/register/options")
+def pk_reg_options(authorization: str = Header(None), x_role: str = Header(None)):
+    c, dev = _pk_ctx(authorization, x_role)
+    return passkeys.register_options(c["phone"], dev, c.get("name") or "Admin", auth.REQUEST.get())
+
+
+@router.post("/api/portal/passkey/register/verify")
+def pk_reg_verify(body: CredIn, authorization: str = Header(None), x_role: str = Header(None)):
+    c, dev = _pk_ctx(authorization, x_role)
+    return _pk(passkeys.register_verify, c["phone"], dev, body.credential, auth.REQUEST.get())
+
+
+@router.post("/api/portal/passkey/unlock/options")
+def pk_auth_options(authorization: str = Header(None), x_role: str = Header(None)):
+    c, dev = _pk_ctx(authorization, x_role)
+    return passkeys.auth_options(c["phone"], dev, auth.REQUEST.get())
+
+
+@router.post("/api/portal/passkey/unlock/verify")
+def pk_auth_verify(body: CredIn, authorization: str = Header(None), x_role: str = Header(None)):
+    c, dev = _pk_ctx(authorization, x_role)
+    return _pk(passkeys.auth_verify, c["phone"], dev, body.credential, auth.REQUEST.get())
 
 
 @router.get("/api/portal/status")
@@ -370,7 +466,9 @@ def save_route(rid: str, body: RouteIn, authorization: str = Header(None), x_rol
 @router.get("/api/portal/devices")
 def devices(authorization: str = Header(None), x_role: str = Header(None)):
     ctx(authorization, x_role, APPROVERS)
-    return {"items": [{k: v for k, v in d.items() if k != "h"} for d in (store.get("devices", []) or [])],
+    pk = {c["dev"] for c in (store.get("passkeys", []) or [])}
+    return {"items": [{k: v for k, v in d.items() if k != "h"} | {"code": auth.device_code(d["id"]), "passkey": d["id"] in pk}
+                      for d in (store.get("devices", []) or [])],
             "ip_lock": bool(os.getenv("OFFICE_IPS")), "hours": os.getenv("OFFICE_HOURS", ""),
             "your_ip": auth.REQUEST.get().get("ip", "")}
 
