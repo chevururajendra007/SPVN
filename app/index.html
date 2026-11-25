@@ -189,7 +189,7 @@ const TABS={
   teacher:[['attendance','✅ Attendance'],['homework','📚 Homework'],['lessons','📷 Lesson scan'],['practicals','🧪 Practicals'],['students','🔎 My class'],['circulars','📄 Circulars'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['ask','🤖 Ask SPV']],
   superadmin:[['dash','📊 Dashboard'],['fees','💰 Fees'],['team','🔑 Roles & data'],['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['lessons','📷 Lesson scan'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['messages','💬 WhatsApp'],['ask','🤖 Ask SPV']],
   principal:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['lessons','📷 Lesson scan'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['team','👥 Team'],['ask','🤖 Ask SPV']],
-  correspondent:[['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['circulars','📄 Circulars'],['ask','🤖 Ask SPV']],
+  correspondent:[['dash','📊 Dashboard'],['fees','💰 Fees'],['search','🔎 Search'],['routes','🚐 Bus routes'],['practicals','🧪 Practicals'],['lessons','📷 Lesson scan'],['circulars','📄 Circulars'],['updates','📢 Parent updates'],['attendance','✅ Attendance'],['team','👥 Team'],['ask','🤖 Ask SPV']],
   admin:[['fees','💰 Fee entry'],['updates','📢 Parent updates'],['dash','📊 Dashboard'],['search','🔎 Search'],['messages','💬 WhatsApp'],['routes','🚐 Bus routes'],['circulars','📄 Circulars'],['team','👥 Team'],['ask','🤖 Ask SPV']]
 };
 let S={token:ls.get('spv-token'),role:ls.get('spv-role'),phone:null,me:null,tab:null,chat:[],timer:null};
@@ -387,7 +387,7 @@ async dash(v){
 },
 async fees(v){
   const d=await api('/api/portal/dashboard'),f=d.fees,c=f.collection,role=S.role;
-  const canEnter=['admin','principal','superadmin'].includes(role),canApprove=['principal','superadmin'].includes(role);
+  const canEnter=['admin','principal','correspondent','superadmin'].includes(role),canApprove=['principal','correspondent','superadmin'].includes(role);
   const ents=await api('/api/portal/fees/entries'+(canApprove?'?status=pending':''));
   v.innerHTML=`<h2 class="h">${role==='admin'?'Fee entry':'Fees'}</h2>
     <div class="tiles"><div class="tile"><small>Collected today</small><b>${rs(c.today.total)}</b><em>${c.today.count} receipts · ${Object.entries(c.today.modes).map(([m,a])=>esc(m)+' '+rs(a)).join(' · ')||'—'}</em></div>
@@ -459,7 +459,7 @@ async messages(v){
     <h3 class="h">Recent</h3><div class="card">${d.items.filter(m=>m.status!=='queued').slice(0,40).map(m=>`<div class="res" style="cursor:default"><span class="muted">${esc(m.kind)} · ${esc(m.to)}</span>${waBtn(m)}</div>`).join('')||'<p class="muted">None yet.</p>'}</div>`;
 },
 async routes(v){
-  const canEdit=['principal','admin'].includes(S.role);
+  const canEdit=['principal','correspondent','superadmin'].includes(S.role);
   v.innerHTML=`<h2 class="h">${S.role==='parent'?'School van':'Bus routes · live'}</h2><div id="map"></div><div id="rl"><p class="muted">Loading…</p></div>`;
   await loadLeaflet();
   if(window.L){map=L.map('map').setView([14.0436,79.9806],13);layer=L.layerGroup().addTo(map);
@@ -492,7 +492,7 @@ async routes(v){
 },
 async team(v){
   const d=await api('/api/portal/team'),st=S.me.status;
-  const canAssign=d.can_assign,canImport=['superadmin','principal'].includes(S.role);
+  const canAssign=d.can_assign,canImport=['superadmin','principal','correspondent'].includes(S.role);
   v.innerHTML=`<h2 class="h">${canAssign?'Roles & data':'Team'}</h2>
     ${S.role==='admin'?'<div class="banner warn">Admin has write-only access: you can view this list but cannot change roles.</div>':''}
     <div class="card"><b>System status</b>
@@ -581,7 +581,7 @@ async ask(v){
     teacher:["Today's attendance","My class students","Practical this week","Latest circular","Where are the vans?"],
     principal:["Today's attendance","Fee collection today","Fee defaulters","Practicals this week","Where are the vans?"],
     superadmin:["Today's attendance","Fee collection today","Fee defaulters","Practicals this week","WhatsApp outbox"],
-    correspondent:["Today's attendance","Attendance last week","Practicals this week","Where are the vans?"],
+    correspondent:["Today's attendance","Fee collection today","Fee defaulters","Practicals this week","Where are the vans?"],
     admin:["Fee collection today","WhatsApp outbox","Today's attendance","Where are the vans?"]}[S.role];
   v.innerHTML=`<div class="chat"><h2 class="h">Ask SPV</h2><div class="log" id="log"></div><div class="chips" id="chips"></div>
     <form class="f" id="cf" style="grid-template-columns:1fr auto"><input id="cq" placeholder="Ask in English or తెలుగు…" maxlength="2000"><button class="btn btn-navy">Send</button></form></div>`;

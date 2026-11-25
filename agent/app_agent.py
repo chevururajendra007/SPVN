@@ -14,7 +14,7 @@ ROLE_INFO = {
     "teacher": "a class teacher. Help with their class: attendance, students, marks, circulars, vans.",
     "superadmin": "the super admin (school management). Give short, numbers-first answers about the whole school.",
     "principal": "the principal. Give short, numbers-first answers about the whole school.",
-    "correspondent": "the correspondent (management). Give short, numbers-first answers about the whole school.",
+    "correspondent": "the correspondent (school management, same access as the principal). Give short, numbers-first answers about the whole school.",
     "admin": "the school admin. Help with students, fees, messages and vans.",
 }
 

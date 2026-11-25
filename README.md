@@ -36,7 +36,7 @@ Login with mobile number + OTP. One number can hold several roles (e.g. a teache
 | Parent | Own children only: attendance, marks, fees + reminder, homework, updates, live van, Ask SPV |
 | Class teacher | Own class: attendance P/A (absent → WhatsApp), fee reminder button, homework, lesson scan → summary to parents, weekly practical sessions, circulars, bus routes |
 | Principal | Dashboard (attendance, fees, daily collection, practicals), approves fee entries, reminders, search, bus routes + live map, circulars, parent updates, lesson scan, Excel import |
-| Correspondent | Dashboard, fees, search, bus routes, circulars |
+| Correspondent | Same access as the principal |
 | Super admin | Everything + assigns roles from the portal |
 | Admin (write-only) | Enters fees (go to principal for approval), parent updates, circulars, WhatsApp outbox, search |
 

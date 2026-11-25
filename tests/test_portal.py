@@ -369,13 +369,10 @@ def test_lesson_summary_with_ai(client, monkeypatch):
 
 
 def test_fee_amounts_only_for_principal_and_admin(client):
-    c, _ = login(client, PRINCIPAL, "correspondent")
-    assert client.get("/api/portal/dashboard", headers=c).status_code == 403
-    assert client.get("/api/portal/fees/entries", headers=c).status_code == 403
-    hit = client.get(f"/api/portal/search?q={KID_O['id']}", headers=c).json()["results"][0]
-    assert "balance" not in hit and "fee_total" not in hit
-    assert "fee_total" not in client.get(f"/api/portal/student/{KID_O['id']}", headers=c).json()
-    assert "Rs." not in client.post("/api/portal/chat", headers=c, json={"message": f"search {KID_O['id']}"}).json()["reply"]
+    c, _ = login(client, PRINCIPAL, "correspondent")   # correspondent = same access as principal
+    assert client.get("/api/portal/dashboard", headers=c).status_code == 200
+    assert client.get("/api/portal/fees/entries", headers=c).status_code == 200
+    assert "balance" in client.get(f"/api/portal/search?q={KID_O['id']}", headers=c).json()["results"][0]
     t, _ = login(client, TEACHER_PHONE, "teacher")
     kids = client.get("/api/portal/class", headers=t).json()["students"]
     assert all("balance" not in k and "fee_total" not in k and "fee_due" in k for k in kids)

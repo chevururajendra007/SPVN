@@ -148,7 +148,7 @@ def make_skills(ctx: dict) -> list:
 
     def search_students(query: str) -> str:
         """Search all students by name, admission no, parent or phone."""
-        fees = role in ("superadmin", "principal", "admin")  # only these roles may see fee amounts
+        fees = role in ("superadmin", "principal", "correspondent", "admin")  # only these see fee amounts
         hits = school.search(query, school.students(), fees)
         return "\n".join(f"{h['name']} ({h['id']}), Class {h['class']} - parent {h['parent']} {h['phone']}"
                          + (f", fee balance {_rupees(h['balance'])}" if fees else "") for h in hits) or "No students found."
@@ -196,9 +196,10 @@ def make_skills(ctx: dict) -> list:
                     practical_this_week],
         "principal": [attendance_today, attendance_last_week, fee_overview, fee_collection, fee_defaulters,
                       search_students, staff_circulars, all_vans, practical_this_week],
-        "correspondent": [attendance_today, attendance_last_week, search_students, all_vans, practical_this_week],
+        "correspondent": [],  # same as principal, filled below
         "admin": [attendance_today, fee_overview, fee_collection, fee_defaulters, search_students, staff_circulars,
                   all_vans, message_outbox],
     }
+    by_role["correspondent"] = by_role["principal"]
     by_role["superadmin"] = by_role["principal"] + [message_outbox]
     return common + by_role.get(role, [])

@@ -6,12 +6,12 @@ Roles are re-checked on every call (auth.session), and each route lists who may 
 Permissions (least privilege):
   superadmin     everything + assigns roles
   principal      everything except assigning roles; approves fee entries
-  correspondent  read dashboards, fees, search, routes; circulars and reminders
+  correspondent  same as principal (dashboards, fees, approvals, routes, import, attendance)
   admin          WRITE-ONLY: enters fees (pending approval), posts updates/circulars, sends reminders;
                  cannot change or delete existing records, routes, roles or imported data.
                  Works only from the office: approved office device (+ optional office IP / hours).
-  Fee amounts and dashboards: ONLY superadmin, principal and admin (FEE_ROLES). Teachers and the
-  correspondent never receive amounts; parents see only their own children's fees.
+  Fee amounts and dashboards: ONLY superadmin, principal, correspondent and admin (FEE_ROLES).
+  Teachers never receive amounts; parents see only their own children's fees.
   teacher        own class only;  parent: own children only
 """
 import os
@@ -30,9 +30,9 @@ from app_agent import role_chat
 
 router = APIRouter()
 MGMT = ("superadmin", "principal", "correspondent", "admin")
-APPROVERS = ("superadmin", "principal")   # may change/approve existing records
+APPROVERS = ("superadmin", "principal", "correspondent")   # may change/approve existing records
 ALL = ("parent", "teacher") + MGMT
-FEE_ROLES = ("superadmin", "principal", "admin")   # may see fee amounts and dashboards
+FEE_ROLES = ("superadmin", "principal", "correspondent", "admin")   # may see fee amounts and dashboards
 
 
 def install(app):
