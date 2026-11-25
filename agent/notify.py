@@ -6,7 +6,7 @@ Two ways, chosen automatically:
                   names below (each with ONE body variable {{1}} that receives the full message text):
                     WA_TPL_ABSENT, WA_TPL_FEE, WA_TPL_HOMEWORK, WA_TPL_UPDATE, WA_TPL_CIRCULAR
                   and WA_TPL_OTP (an "authentication" template) for login codes. WA_TPL_LANG (default en).
-  OTP by SMS    - FAST2SMS_API_KEY + FAST2SMS_OTP_ID (Fast2SMS Smart OTP, DLT template) - see docs/SETUP_OTP_WHATSAPP.md
+  OTP           - WhatsApp authentication template (WA_TPL_OTP) by default; SMS (Fast2SMS) only with OTP_CHANNEL=sms|both
   2. One-tap    - without the API, every message is queued in the outbox with a wa.me link. The teacher
                   or office taps "Send on WhatsApp" and it opens WhatsApp with the text ready. Free.
 Numbers that are not valid Indian mobiles (test data uses numbers starting with 5) are never messaged.
@@ -81,7 +81,9 @@ def sms_ready() -> bool:
 
 
 def otp_ready() -> bool:
-    return sms_ready() or (api_ready() and bool(os.getenv("WA_TPL_OTP")))
+    mode = os.getenv("OTP_CHANNEL", "whatsapp").lower()
+    wa = api_ready() and bool(os.getenv("WA_TPL_OTP"))
+    return sms_ready() if mode == "sms" else (wa or sms_ready()) if mode == "both" else wa
 
 
 def _fast2sms_otp(phone: str, code: str):
@@ -106,12 +108,13 @@ def _wa_otp(phone: str, code: str):
 
 
 def send_otp(phone: str, code: str) -> str:
-    """Send the login code. Returns the channel used: sms | whatsapp | none.
-    Order: SMS (Fast2SMS) first, WhatsApp as fallback (or the other way round with OTP_CHANNEL=whatsapp)."""
-    order = [("sms", sms_ready, _fast2sms_otp),
-             ("whatsapp", lambda: api_ready() and bool(os.getenv("WA_TPL_OTP")), _wa_otp)]
-    if os.getenv("OTP_CHANNEL", "").lower() == "whatsapp":
-        order.reverse()
+    """Send the login code. Returns the channel used: whatsapp | sms | none.
+    Default: WhatsApp only (one provider for login AND school messages, no DLT registration).
+    OTP_CHANNEL=sms uses Fast2SMS only; OTP_CHANNEL=both tries WhatsApp first, then SMS."""
+    wa = ("whatsapp", lambda: api_ready() and bool(os.getenv("WA_TPL_OTP")), _wa_otp)
+    sms = ("sms", sms_ready, _fast2sms_otp)
+    mode = os.getenv("OTP_CHANNEL", "whatsapp").lower()
+    order = [sms] if mode == "sms" else [wa, sms] if mode == "both" else [wa]
     for name, ready, fn in order:
         if ready():
             try:

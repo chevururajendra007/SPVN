@@ -51,7 +51,7 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | `JWT_SECRET` | signs login sessions (random, never share) |
 | `OTP_DEV_MODE` | `true` shows the OTP on screen for testing. **Set to `false` before parents use it** |
 | `SUPERADMIN_PHONES`, `PRINCIPAL_PHONES`, `CORRESPONDENT_PHONES`, `ADMIN_PHONES` | comma-separated numbers (a super admin can assign more in Roles & data) |
-| `FAST2SMS_API_KEY`, `FAST2SMS_OTP_ID` | SMS OTP (see SETUP_OTP_WHATSAPP.md) |
+| `WA_TPL_OTP`, `OTP_CHANNEL` | login OTP on WhatsApp (default `whatsapp`; `sms`/`both` with `FAST2SMS_API_KEY`, `FAST2SMS_OTP_ID`) |
 | `WA_TPL_DEFAULT` | WhatsApp utility template used for all school messages |
 | `AI_GATEWAY_API_KEY` (optional), `LESSON_MODEL` | lesson scan AI; without a key the Vercel OIDC token is used |
 | `VAN_KEY` | secret in the van phones' server URL |
