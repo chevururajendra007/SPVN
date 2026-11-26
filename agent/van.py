@@ -103,7 +103,7 @@ def save_point(p: dict) -> str:
     elif cur and cur.get("fix_ts"):
         p["fix_ts"] = cur["fix_ts"]
     if p.get("kmh") is None and cur:  # some phones send no speed: work it out from the last point
-        dt = p["ts"] - cur["ts"]
+        dt = p["ts"] - cur.get("fix_ts", cur["ts"])  # time since the point we actually measured
         if 0 < dt < 600:
             p["kmh"] = round(_km(cur, p) / (dt / 3600), 1)
     latest[p["id"]] = p
