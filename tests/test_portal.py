@@ -227,7 +227,15 @@ def test_van_gps_and_route_privacy(client):
     rs = client.get("/api/portal/routes", headers=h).json()["routes"]
     assert any(r["device_id"] == "111" and r["name"].startswith("Unassigned") for r in rs)
     client.post(f"/api/portal/routes/{KID_A['route']}", headers=h, json={"device_id": "111", "driver": "Ravi"})
-    assert client.post("/api/van/loc/vankey?id=999&lat=14&lon=79").status_code == 403  # unknown phone now
+    # a second phone after setup is kept as "Unassigned" (not rejected) so it can be linked
+    assert client.post("/api/van/loc/vankey?id=999&lat=14&lon=79").json()["ok"]
+    rs = client.get("/api/portal/routes", headers=h).json()
+    assert any(r["device_id"] == "999" and r["id"] == "dev-999" for r in rs["routes"])
+    seen = {x["id"]: x for x in rs["attempts"]}  # every attempt is visible to management, also rejected ones
+    assert seen["999"]["ok"] and seen["111"]["ok"]
+    client.post("/api/van/loc/wrong?id=777&lat=14&lon=79")
+    last = client.get("/api/portal/routes", headers=h).json()["attempts"][0]
+    assert last["id"] == "777" and not last["ok"] and "key" in last["reason"]
     client.post("/api/van/loc/vankey", json={"device_id": "111", "location": {
         "timestamp": "2030-01-01T00:00:00Z", "coords": {"latitude": 14.05, "longitude": 79.99, "speed": 8}}})
     a, _ = login(client, PARENT_A, "parent")

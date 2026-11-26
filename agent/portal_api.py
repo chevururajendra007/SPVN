@@ -457,7 +457,7 @@ def routes(authorization: str = Header(None), x_role: str = Header(None)):
             counts[s.get("route")] = counts.get(s.get("route"), 0) + 1
         for v in items:
             v["students"] = counts.get(v["id"], 0)
-    return {"routes": items}
+    return {"routes": items, "attempts": van.attempts() if c["role"] in APPROVERS + ("admin",) else []}
 
 
 class StopsIn(BaseModel):

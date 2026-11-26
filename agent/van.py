@@ -6,8 +6,8 @@ Portal map      ->  GET  /api/portal/routes  (logged-in users; parents see only 
 Settings (Vercel -> Project -> Settings -> Environment Variables):
   VAN_KEY   secret part of the URL the phone sends to (required; anything else is rejected)
 Which phone belongs to which route: set the Traccar "Device identifier" on each route in the portal
-(Principal/Admin -> Bus routes). Unknown devices are accepted only while no route has a device id,
-so a first test works before setup.
+(Principal -> Bus routes). A phone with the right URL but an unknown identifier appears as
+"Unassigned phone" (max 10) until it is linked. Every attempt (also rejected ones) is listed in Bus routes.
 Positions are stored (encrypted) in the Vercel Neon Postgres database via store.py.
 """
 import hmac
@@ -139,13 +139,24 @@ def status_text(items: list[dict]) -> str:
 
 
 # ---------------------------------------------------------------- receiver
+def note_attempt(dev: str, ok: bool, reason: str):
+    """Last attempts per phone, so the principal can see in Bus routes whether a phone is reaching us."""
+    items = [x for x in (store.get("van:attempts", []) or []) if x["id"] != dev]
+    items.insert(0, {"id": dev[:40], "ok": ok, "reason": reason, "at": time.time()})
+    store.set("van:attempts", items[:15])
+    print(f"[van] {'ok' if ok else 'rejected'} device={dev[:40]} {reason}")
+
+
+def attempts() -> list[dict]:
+    now = time.time()
+    return [x | {"age_s": int(now - x["at"])} for x in (store.get("van:attempts", []) or []) if now - x["at"] < 86400]
+
+
+MAX_UNASSIGNED = 10
+
+
 @router.api_route("/loc/{key}", methods=["GET", "POST"])
 async def receive(key: str, request: Request):
-    expected = os.getenv("VAN_KEY", "")
-    if not expected:
-        raise HTTPException(503, "VAN_KEY is not set on the server")
-    if not hmac.compare_digest(key, expected):
-        raise HTTPException(403, "wrong key")
     fields = dict(request.query_params)
     body = None
     raw = await request.body()
@@ -159,13 +170,24 @@ async def receive(key: str, request: Request):
                 fields.update((await request.form()).items())
         except Exception:
             pass
+    dev_hint = str(fields.get("id") or (body or {}).get("device_id") or (body or {}).get("id") or "unknown")
+    expected = os.getenv("VAN_KEY", "")
+    if not expected:
+        raise HTTPException(503, "VAN_KEY is not set on the server")
+    if not hmac.compare_digest(key, expected):
+        note_attempt(dev_hint, False, "wrong server URL (key)")
+        raise HTTPException(403, "wrong key")
     try:
         p = parse(fields, body)
     except ValueError as e:
+        note_attempt(dev_hint, False, "no location in the message (GPS off or no fix yet)")
         raise HTTPException(400, str(e))
     import school
     known = {r.get("device_id") for r in school.routes() if r.get("device_id")}
-    if known and p["id"] not in known:
-        raise HTTPException(403, "unknown device id - add it to a bus route in the portal")
-    save_point(p)
+    latest = store.get("van:latest", {}) or {}
+    if p["id"] not in known and p["id"] not in latest and sum(d not in known for d in latest) >= MAX_UNASSIGNED:
+        note_attempt(p["id"], False, "too many unlinked phones - link or remove some")
+        raise HTTPException(403, "too many unassigned devices")
+    save_point(p)  # unknown phones are kept as "Unassigned phone" until linked to a route
+    note_attempt(p["id"], True, "linked" if p["id"] in known else "not linked to a route yet")
     return {"ok": True}
