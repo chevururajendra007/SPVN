@@ -613,3 +613,18 @@ def test_van_states_and_rough_fix_skipped():
     assert van.save_point({"id": "acc-test", "lat": 14.0410, "lon": 79.98, "ts": now, "kmh": None, "acc": 10}) == "ok"
     import store
     assert store.get("van:latest")["acc-test"]["kmh"] > 5   # speed worked out from the two points
+
+
+def test_rough_position_keeps_gps_point_but_phone_stays_live():
+    import time as _t
+    import store
+    import van
+    now = _t.time()
+    van.save_point({"id": "gps-a", "lat": 14.0400, "lon": 79.9800, "ts": now - 60, "kmh": 0, "acc": 9})
+    van.save_point({"id": "gps-a", "lat": 14.0450, "lon": 79.9850, "ts": now, "kmh": 0, "acc": 432})
+    cur = store.get("van:latest")["gps-a"]
+    assert (cur["lat"], cur["lon"]) == (14.04, 79.98) and cur["ts"] == now  # good point kept, phone still fresh
+    # a phone that only ever has rough fixes is shown, marked approximate
+    van.save_point({"id": "gps-b", "lat": 14.05, "lon": 79.99, "ts": now, "kmh": 0, "acc": 432})
+    pos = van._pos(store.get("van:latest")["gps-b"], now, "gps-b")
+    assert pos["rough"] and pos["acc"] == 432

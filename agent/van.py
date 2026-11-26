@@ -24,7 +24,8 @@ router = APIRouter(prefix="/api/van")
 TRAIL = 120            # points of route history kept per van
 FRESH = 3 * 60         # updated within 3 min: shown as moving / stopped right now
 STALE_AFTER = 30 * 60  # 3-30 min: van parked or phone idle; older: offline
-BAD_ACCURACY = 200     # metres: a rough network fix must not replace a good recent GPS fix
+BAD_ACCURACY = 100     # metres: worse than this = Wi-Fi / tower position, not GPS
+GOOD_KEEP = 10 * 60    # keep showing a real GPS fix this long rather than replace it with a rough one
 
 
 # ---------------------------------------------------------------- parsing (old and new Traccar Client formats)
@@ -91,8 +92,16 @@ def save_point(p: dict) -> str:
     if cur and cur.get("ts", 0) > p["ts"]:
         return "older than the last position - skipped"
     if cur and (p.get("acc") or 0) > BAD_ACCURACY and (cur.get("acc") or 0) <= BAD_ACCURACY \
-            and p["ts"] - cur["ts"] < 120:
-        return "rough location (low accuracy) - skipped"
+            and p["ts"] - cur.get("fix_ts", cur["ts"]) < GOOD_KEEP:
+        cur["ts"] = p["ts"]  # phone is alive; keep the good GPS point as the position
+        cur["battery"] = p.get("battery", cur.get("battery"))
+        latest[p["id"]] = cur
+        store.set("van:latest", latest)
+        return "rough location (no GPS lock) - kept last GPS point"
+    if (p.get("acc") or 0) <= BAD_ACCURACY:
+        p["fix_ts"] = p["ts"]
+    elif cur and cur.get("fix_ts"):
+        p["fix_ts"] = cur["fix_ts"]
     if p.get("kmh") is None and cur:  # some phones send no speed: work it out from the last point
         dt = p["ts"] - cur["ts"]
         if 0 < dt < 600:
@@ -137,7 +146,7 @@ GEO_TTL = 30 * 86400   # a street keeps its name; cache per ~100 m square for 30
 
 
 def _geo_key(lat, lon):
-    return f"geo:{round(lat, 3)}:{round(lon, 3)}"
+    return f"geo2:{round(lat, 4)}:{round(lon, 4)}"  # ~11 m squares
 
 
 def _format_place(a: dict) -> str:
@@ -165,7 +174,7 @@ def place_name(lat: float, lon: float, lookup: bool = True) -> str | None:
     store.set("geo:busy", 1, ttl=2)
     import urllib.parse
     import urllib.request
-    q = urllib.parse.urlencode({"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 17,
+    q = urllib.parse.urlencode({"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18,
                                 "addressdetails": 1, "accept-language": "en"})
     try:
         req = urllib.request.Request(f"{GEO_URL}?{q}", headers={
@@ -214,7 +223,9 @@ def _pos(p, now, dev):
     trail = store.get(f"van:trail:{dev}", []) or []
     state, text = _state(p, now)
     return {"lat": p["lat"], "lon": p["lon"], "kmh": p.get("kmh"), "battery": p.get("battery"),
-            "age_s": int(now - p["ts"]), "trail": trail[:60], "state": state, "state_text": text}
+            "age_s": int(now - p["ts"]), "trail": trail[:60], "state": state, "state_text": text,
+            "acc": None if p.get("acc") is None else int(p["acc"]),
+            "rough": (p.get("acc") or 0) > BAD_ACCURACY}
 
 
 def eta_to_stop(position: dict | None, stop: dict | None, live: bool) -> dict | None:
