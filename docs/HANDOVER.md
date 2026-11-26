@@ -91,3 +91,13 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 
 ## Test
 `SPV_SEED=<seed.json> python -m pytest tests -q` (portal + security tests; add `DATABASE_URL` and `SECURITY_PG` to run them on Postgres).
+
+## Van street names (exact place where the van is)
+- Without a key the portal uses free OpenStreetMap names (few street names in Kota villages).
+- For Google-quality street names ("NCR Nagar Rd, Kota") add `GOOGLE_MAPS_API_KEY` in Vercel:
+  1. console.cloud.google.com → create project "SPV School" → enable **Geocoding API**.
+  2. Billing must be linked (Google asks for a card) – usage stays inside the free monthly allowance.
+  3. APIs & Services → Credentials → Create API key → Restrict key → API restrictions: Geocoding API only.
+  4. Vercel → spvn → Settings → Environment Variables → `GOOGLE_MAPS_API_KEY` (Sensitive) → Redeploy.
+- Safety limits: one lookup per ~11 m square (cached 30 days), no new lookup while a van moved < 60 m,
+  and at most `GEO_DAILY_MAX` (default 300) Google lookups per day (~9,000/month).

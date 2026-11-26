@@ -587,18 +587,35 @@ def test_van_place_name_and_nearest_stop(client, monkeypatch):
     calls = []
 
     def fake_open(req, timeout=0):
-        calls.append(req.full_url)
+        url = req if isinstance(req, str) else req.full_url
+        calls.append(url)
+        if "googleapis" in url:
+            return io.BytesIO(_j.dumps({"status": "OK", "results": [
+                {"types": ["establishment", "point_of_interest"], "address_components": [
+                    {"long_name": "Extra Mart Hyper Market", "types": ["establishment", "point_of_interest"]}]},
+                {"types": ["route"], "address_components": [
+                    {"long_name": "NCR Nagar Rd", "types": ["route"]},
+                    {"long_name": "NCR Nagar", "types": ["sublocality_level_1", "sublocality"]},
+                    {"long_name": "Kota", "types": ["locality"]}]}]}).encode())
         assert "SPV-School-Portal" in req.get_header("User-agent")  # OpenStreetMap requires a real app name
-        return io.BytesIO(_j.dumps({"address": {"road": "NCR Nagar Road", "suburb": "Vidyanagar",
-                                                "town": "Kota"}}).encode())
+        return io.BytesIO(_j.dumps({"name": "", "category": "highway", "address": {
+            "road": "NCR Nagar Road", "suburb": "Vidyanagar", "town": "Kota"}}).encode())
     monkeypatch.setenv("GEOCODE", "on")
     monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    monkeypatch.delenv("GOOGLE_MAPS_API_KEY", raising=False)
     assert van.place_name(14.0391, 79.9712) == "NCR Nagar Road, Vidyanagar, Kota"
     assert van.place_name(14.03912, 79.97118) == "NCR Nagar Road, Vidyanagar, Kota" and len(calls) == 1  # cached
+    # OpenStreetMap landmark
+    assert van._format_place({"road": "SH377", "town": "Kota"}, "Extra Mart", "shop") == "near Extra Mart, SH377, Kota"
+    # Google, when the school adds a key: real Indian street names + landmark
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+    assert van.place_name(14.0500, 79.9900, "van-g") == "near Extra Mart Hyper Market, NCR Nagar Rd, Kota"
+    n = len(calls)
+    assert van.place_name(14.05002, 79.99003, "van-g").startswith("near Extra Mart")  # moved 3 m: no new lookup
+    assert len(calls) == n
     st = van.nearest_stop({"lat": 14.0391, "lon": 79.9712},
                           [{"name": "Far", "lat": 14.20, "lon": 79.90}, {"name": "NCR Nagar", "lat": 14.0400, "lon": 79.9712}])
     assert st["name"] == "NCR Nagar" and 50 < st["m"] < 150
-
 
 def test_van_states_and_rough_fix_skipped():
     import time as _t

@@ -129,7 +129,7 @@ def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
             p = None  # weeks-old position: don't show it as where the van is
         pos = _pos(p, now, r.get("device_id"))
         if pos:
-            pos["place"] = place_name(pos["lat"], pos["lon"])
+            pos["place"] = place_name(pos["lat"], pos["lon"], r.get("device_id"))
             pos["near_stop"] = nearest_stop(pos, r.get("stops"))
         out.append(dict(r, live=_live(p, now), position=pos))
     if only_routes is None:  # unassigned test phones (management view only)
@@ -140,53 +140,116 @@ def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
     return out
 
 
-# ---------------------------------------------------------------- place names (free OpenStreetMap lookup)
+# ---------------------------------------------------------------- place names
+# Google Maps (GOOGLE_MAPS_API_KEY set) knows Indian street names best ("NCR Nagar Rd"); without a key the
+# free OpenStreetMap lookup is used. Both are cached per ~11 m square for 30 days. A van that moved less
+# than REUSE_M keeps its last name, and Google lookups are capped per day (GEO_DAILY_MAX) so the school
+# stays inside Google's free monthly allowance.
 GEO_URL = "https://nominatim.openstreetmap.org/reverse"
-GEO_TTL = 30 * 86400   # a street keeps its name; cache per ~100 m square for 30 days
+GOOGLE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+GEO_TTL = 30 * 86400
+LANDMARK_KINDS = {"amenity", "shop", "tourism", "office", "leisure", "building", "place_of_worship",
+                  "school", "hospital", "bank"}
+
+
+def _provider() -> str:
+    return "google" if os.getenv("GOOGLE_MAPS_API_KEY") else "osm"
 
 
 def _geo_key(lat, lon):
-    return f"geo2:{round(lat, 4)}:{round(lon, 4)}"  # ~11 m squares
+    return f"geo3:{_provider()}:{round(lat, 4)}:{round(lon, 4)}"
 
 
-def _format_place(a: dict) -> str:
-    road = a.get("road") or a.get("pedestrian") or a.get("residential")
+def _join(*xs) -> str:
+    out = []
+    for x in xs:
+        if x and x not in out and not any(x in o for o in out):
+            out.append(x)
+    return ", ".join(out[:3])
+
+
+def _format_place(a: dict, name: str = "", kind: str = "") -> str:
+    """OpenStreetMap address -> 'near Extra Mart, NCR Nagar Rd, Kota'."""
+    road = a.get("road") or a.get("pedestrian") or a.get("residential") or a.get("footway")
     area = a.get("neighbourhood") or a.get("suburb") or a.get("quarter") or a.get("hamlet")
     town = a.get("village") or a.get("town") or a.get("city") or a.get("county")
-    parts = []
-    for x in (road, area, town):
-        if x and x not in parts:
-            parts.append(x)
-    return ", ".join(parts[:3])
+    place = _join(road, area, town)
+    if name and kind in LANDMARK_KINDS and name != road:
+        return f"near {name}, {place}" if place else f"near {name}"
+    return place
 
 
-def place_name(lat: float, lon: float, lookup: bool = True) -> str | None:
-    """'NCR Nagar Road, Vidyanagar, Kota' for a position. Cached; at most one new lookup per second
-    (OpenStreetMap's rule). Returns None when not known yet - the next refresh fills it in."""
-    if os.getenv("GEOCODE", "on").lower() in ("off", "0", "false"):
-        return None
-    key = _geo_key(lat, lon)
-    hit = store.get(key)
-    if hit is not None:
-        return hit or None
-    if not lookup or store.get("geo:busy"):
-        return None
-    store.set("geo:busy", 1, ttl=2)
+def _format_google(results: list) -> str:
+    """Google reverse-geocode results -> 'NCR Nagar Rd, NCR Nagar, Kota' (with a landmark when given)."""
+    comp, landmark = {}, ""
+    for r in results:
+        types = set(r.get("types", []))
+        if not landmark and types & {"point_of_interest", "establishment", "premise"}:
+            landmark = next((c["long_name"] for c in r.get("address_components", [])
+                             if set(c["types"]) & {"point_of_interest", "establishment", "premise"}), "")
+        for c in r.get("address_components", []):
+            for t in c["types"]:
+                comp.setdefault(t, c["long_name"])
+    road = comp.get("route")
+    if road and road.lower() in ("unnamed road", "unnamed"):
+        road = None
+    area = comp.get("sublocality_level_2") or comp.get("sublocality_level_1") or comp.get("neighborhood")
+    town = comp.get("locality") or comp.get("administrative_area_level_3")
+    place = _join(road, area, town)
+    return f"near {landmark}, {place}" if landmark and landmark != road else place
+
+
+def _lookup(lat: float, lon: float) -> str:
     import urllib.parse
     import urllib.request
+    if _provider() == "google":
+        q = urllib.parse.urlencode({"latlng": f"{lat},{lon}", "key": os.getenv("GOOGLE_MAPS_API_KEY"),
+                                    "language": "en", "region": "in"})
+        with urllib.request.urlopen(f"{GOOGLE_URL}?{q}", timeout=4) as r:
+            data = json.loads(r.read())
+        if data.get("status") not in ("OK", "ZERO_RESULTS"):
+            raise RuntimeError(f"google {data.get('status')}")
+        return _format_google(data.get("results", []))
     q = urllib.parse.urlencode({"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18,
                                 "addressdetails": 1, "accept-language": "en"})
-    try:
-        req = urllib.request.Request(f"{GEO_URL}?{q}", headers={
-            "User-Agent": "SPV-School-Portal/1.0 (https://spvn.vercel.app; school van tracking)"})
-        with urllib.request.urlopen(req, timeout=4) as r:
-            name = _format_place(json.loads(r.read()).get("address") or {})
-        store.set(key, name, ttl=GEO_TTL)
-        return name or None
-    except Exception as e:
-        print(f"[van] place lookup failed: {type(e).__name__}")
-        store.set(key, "", ttl=600)  # try again in 10 minutes
+    req = urllib.request.Request(f"{GEO_URL}?{q}", headers={
+        "User-Agent": "SPV-School-Portal/1.0 (https://spvn.vercel.app; school van tracking)"})
+    with urllib.request.urlopen(req, timeout=4) as r:
+        d = json.loads(r.read())
+    return _format_place(d.get("address") or {}, d.get("name") or "", d.get("category") or d.get("type") or "")
+
+
+def place_name(lat: float, lon: float, dev: str | None = None) -> str | None:
+    """Street / area name for a van position. None while not known yet (next refresh fills it in)."""
+    if os.getenv("GEOCODE", "on").lower() in ("off", "0", "false"):
         return None
+    google = _provider() == "google"
+    if dev:  # van hardly moved: keep its last name, no new lookup
+        last = store.get(f"geo:last:{dev}")
+        if last and _km(last, {"lat": lat, "lon": lon}) * 1000 < (60 if google else 25):
+            return last["name"] or None
+    key = _geo_key(lat, lon)
+    hit = store.get(key)
+    if hit is None:
+        if not google and store.get("geo:busy"):  # OpenStreetMap: max one lookup per second
+            return (store.get(f"geo:last:{dev}") or {}).get("name") if dev else None
+        day = f"geo:count:{time.strftime('%Y-%m-%d')}"
+        used = store.get(day) or 0
+        if google and used >= int(os.getenv("GEO_DAILY_MAX", "300")):
+            return (store.get(f"geo:last:{dev}") or {}).get("name") if dev else None
+        if not google:
+            store.set("geo:busy", 1, ttl=2)
+        try:
+            hit = _lookup(lat, lon)
+            store.set(key, hit, ttl=GEO_TTL)
+            store.set(day, used + 1, ttl=2 * 86400)
+        except Exception as e:
+            print(f"[van] place lookup failed ({_provider()}): {type(e).__name__}: {str(e)[:120]}")
+            store.set(key, "", ttl=600)
+            hit = ""
+    if dev:
+        store.set(f"geo:last:{dev}", {"lat": lat, "lon": lon, "name": hit}, ttl=86400)
+    return hit or None
 
 
 def _km(a, b):
