@@ -481,11 +481,30 @@ def _norm_stops(stops) -> list[dict]:
     return out
 
 
+def devkey(x) -> str:
+    """Traccar device identifiers are compared without caring about capitals or extra spaces."""
+    return " ".join(str(x or "").lower().split())[:40]
+
+
+# Phones set by the school on 26 Nov 2026 (Route N -> Traccar identifier); applied once.
+_VAN_FIX = ("fix:van-ids-2026-11-26", {"1": "kota route 1", "2": "tinnelapudi route 2", "3": "vakadu route 3"})
+
+
 def routes() -> list[dict]:
     _ensure_seed()
     rs = store.get("routes", []) or []
     for r in rs:
         r["stops"] = _norm_stops(r.get("stops"))
+        r["device_id"] = devkey(r.get("device_id"))
+    flag, ids = _VAN_FIX
+    if rs and not store.get(flag):
+        import re as _re
+        for r in rs:
+            m = _re.match(r"\s*route\s*(\d+)", r.get("name", ""), _re.I)
+            if m and m.group(1) in ids:
+                r["device_id"] = ids[m.group(1)]
+        store.set("routes", rs)
+        store.set(flag, int(time.time()))
     return rs
 
 
@@ -533,7 +552,11 @@ def save_route(rid, device_id=None, driver=None, driver_phone=None):
         raise ValueError("Route not found")
     for k, v in (("device_id", device_id), ("driver", driver), ("driver_phone", driver_phone)):
         if v is not None:
-            r[k] = str(v).strip()
+            r[k] = devkey(v) if k == "device_id" else str(v).strip()
+    if r.get("device_id"):  # one phone belongs to one route only
+        for x in rs:
+            if x is not r and devkey(x.get("device_id")) == r["device_id"]:
+                x["device_id"] = ""
     store.set("routes", rs)
     return r
 

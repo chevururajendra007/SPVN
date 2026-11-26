@@ -65,7 +65,8 @@ def parse(fields: dict, body: dict | None) -> dict:
     batt = _num(f.get("batt") or (loc.get("battery") or {}).get("level"))
     if batt is not None and batt <= 1:
         batt *= 100
-    return {"id": str(dev)[:40], "lat": round(lat, 6), "lon": round(lon, 6),
+    import school
+    return {"id": school.devkey(dev), "lat": round(lat, 6), "lon": round(lon, 6),
             "ts": _ts(f.get("timestamp") or loc.get("timestamp")), "kmh": kmh,
             "heading": _num(f.get("bearing") or coords.get("heading")),
             "battery": None if batt is None else round(batt), "received": time.time()}
@@ -105,10 +106,12 @@ def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
         if only_routes is not None and r["id"] not in only_routes:
             continue
         p = latest.get(r.get("device_id") or "")
+        if p and now - p["ts"] > OLD_POINT:
+            p = None  # weeks-old position: don't show it as where the van is
         out.append(dict(r, live=_live(p, now), position=_pos(p, now, r.get("device_id"))))
     if only_routes is None:  # unassigned test phones (management view only)
         for dev, p in latest.items():
-            if dev not in assigned:
+            if dev not in assigned and dev == dev.lower() and now - p["ts"] < 86400:
                 out.append({"id": f"dev-{dev}", "name": f"Unassigned phone {dev[-4:]}", "stops": [],
                             "device_id": dev, "live": _live(p, now), "position": _pos(p, now, dev)})
     return out
@@ -193,6 +196,10 @@ async def receive(key: str, request: Request):
     if not hmac.compare_digest(key, expected):
         note_attempt(dev_hint, False, "wrong server URL (key)")
         raise HTTPException(403, "wrong key")
+    if "notificationToken" in fields and "lat" not in fields:  # Traccar start-up message, no location yet
+        import school
+        note_attempt(school.devkey(dev_hint), True, "phone started - waiting for its first GPS location")
+        return {"ok": True}
     try:
         p = parse(fields, body)
     except ValueError as e:

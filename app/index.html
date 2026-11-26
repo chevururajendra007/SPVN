@@ -689,7 +689,7 @@ async routes(v){
     if(busy){paintStops();return}
     $('rl').innerHTML=(d.routes.length?'':'<p class="muted">No bus route is linked to your child.</p>')+d.routes.map(r=>{const p=r.position,dev=String(r.id).startsWith('dev-');
       if(p&&layer){if(p.trail&&p.trail.length>1)L.polyline(p.trail.map(t=>[t[0],t[1]]),{color:'#E3A21A',weight:4}).addTo(layer);
-        L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div class="pin">🚐 ${esc(r.name.split('·')[0])}</div>`,iconAnchor:[30,12]})}).addTo(layer);pts.push([p.lat,p.lon])}
+        L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div class="pin" style="${r.live?'':'background:#6B7393;border-color:#C5CCE2'}">🚐 ${esc(r.name.split('·')[0])}${r.live?'':' · last seen'}</div>`,iconAnchor:[30,12]})}).addTo(layer);pts.push([p.lat,p.lon])}
       const st=p?(r.live?((p.kmh||0)>3?`Moving · ${Math.round(p.kmh)} km/h`:'Stopped'):'Offline')+` · ${ago(p.age_s)}${p.battery!=null?' · 🔋'+p.battery+'%':''}`:'No GPS yet';
       const etas=(mine[r.id]||[]).map(m=>{const e=p&&m.stop.lat!=null?(k=>({km:Math.round(k*10)/10,minutes:Math.max(1,Math.round(k/20*60)),near:k<.4}))(haversineKm(p,m.stop)):null;
         return `<div class="eta"><span style="font-size:1.5rem">📍</span><div><small class="muted">${esc(m.name)}</small><br>${etaText(e,m.stop,r.live)}</div></div>`}).join('');
@@ -698,7 +698,7 @@ async routes(v){
         ${r.stops&&r.stops.length?`<p class="muted">${r.stops.map(x=>esc(x.name)+(x.lat==null&&canStops?' <small style="color:var(--warn)">(not on map)</small>':'')).join(' → ')}</p>`:''}
         ${etas}
         ${r.driver?`<p class="muted">Driver: ${esc(r.driver)} ${r.driver_phone?`· <a href="tel:${esc(r.driver_phone)}">${esc(r.driver_phone)}</a>`:''}</p>`:''}
-        <div class="inline" style="margin-top:8px">${p?`<a class="btn btn-line btn-sm" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lon}">Open in Google Maps</a>`:''}
+        <div class="inline" style="margin-top:8px">${p&&map?`<button class="btn btn-navy btn-sm" data-focus="${p.lat},${p.lon}">📍 Show on map</button>`:''}${p?`<a class="btn btn-line btn-sm" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lon}">Open in Google Maps</a>`:''}
           ${canStops&&!dev?`<button class="btn btn-gold btn-sm" data-stops="${esc(r.id)}">✏️ Edit bus stops (${(r.stops||[]).length})</button>`:''}</div>
         ${canEdit&&!dev?`<details style="margin-top:8px"><summary class="muted">Set GPS phone & driver</summary><div class="f" style="margin-top:8px">
           <input data-r="${esc(r.id)}" data-k="device_id" placeholder="Traccar device identifier" value="${esc(r.device_id||'')}">
@@ -710,6 +710,8 @@ async routes(v){
     paintStops();
     if(map&&!fitted){const all=pts.concat(...last.map(r=>(r.stops||[]).filter(x=>x.lat!=null).map(x=>[x.lat,x.lon])));if(all.length){map.fitBounds(all,{maxZoom:15,padding:[40,40]});fitted=true}}
   };
+  $('rl').addEventListener('click',e=>{const f=e.target.closest('[data-focus]');if(!f||!map)return;const [la,lo]=f.dataset.focus.split(',').map(Number);
+    map.setView([la,lo],16);$('map').scrollIntoView({behavior:'smooth',block:'start'})});
   $('rl').onclick=async e=>{const s=e.target.closest('[data-save]'),l=e.target.closest('[data-dolink]'),st=e.target.closest('[data-stops]');
     try{if(s){const b={};v.querySelectorAll(`[data-r="${s.dataset.save}"]`).forEach(i=>b[i.dataset.k]=i.value);s.disabled=true;try{await post('/api/portal/routes/'+s.dataset.save,b);s.closest('details').open=false;toast('Saved: GPS phone & driver');draw()}finally{s.disabled=false}}
       if(l){const rid=v.querySelector(`[data-link="${l.dataset.dolink}"]`).value;await post('/api/portal/routes/'+rid,{device_id:l.dataset.dolink});toast('Phone linked');draw()}

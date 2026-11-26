@@ -553,3 +553,27 @@ def test_student_database_edit_permissions(client):
     assert client.delete("/api/portal/students/SPV9901", headers=p).json()["ok"]
     _, roles = login(client, "9876500011") if False else (None, None)
     assert client.post("/api/auth/otp", json={"phone": "9876500011"}).status_code == 404
+
+
+def test_van_phone_ids_ignore_case_and_startup_message(client):
+    import school
+    import store
+    store.delete(school._VAN_FIX[0])  # other tests changed the phones; re-apply the school's list
+    h, _ = login(client, PRINCIPAL, "principal")
+    rs = client.get("/api/portal/routes", headers=h).json()["routes"]
+    by_no = {r["name"].split("·")[0].strip(): r for r in rs if not r["id"].startswith("dev-")}
+    assert by_no["Route 1"]["device_id"] == "kota route 1"          # school's phone list, applied once
+    assert by_no["Route 3"]["device_id"] == "vakadu route 3"
+    # Traccar start-up message (no location) is fine, not "rejected"
+    r = client.post("/api/van/loc/vankey", content=b"id=Vakadu%20route%203&notificationToken=abc",
+                    headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert r.status_code == 200
+    # capitals / extra spaces in the phone's identifier still match the route
+    client.post("/api/van/loc/vankey", content=b"id=Vakadu%20%20Route%203&lat=14.02&lon=79.95&speed=3",
+                headers={"Content-Type": "application/x-www-form-urlencoded"})
+    r3 = next(r for r in client.get("/api/portal/routes", headers=h).json()["routes"] if r["id"] == by_no["Route 3"]["id"])
+    assert r3["live"] and r3["position"]["lat"] == 14.02
+    # linking a phone to one route removes it from any other route
+    client.post(f"/api/portal/routes/{by_no['Route 1']['id']}", headers=h, json={"device_id": "Vakadu route 3"})
+    ids = {r["id"]: r["device_id"] for r in client.get("/api/portal/routes", headers=h).json()["routes"]}
+    assert ids[by_no["Route 1"]["id"]] == "vakadu route 3" and ids[by_no["Route 3"]["id"]] == ""
