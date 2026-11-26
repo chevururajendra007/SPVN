@@ -35,6 +35,7 @@ router = APIRouter()
 MGMT = ("superadmin", "principal", "correspondent", "admin")
 APPROVERS = ("superadmin", "principal", "correspondent")   # may change/approve existing records
 ALL = ("parent", "teacher") + MGMT
+EDITORS = ("admin", "superadmin", "principal", "correspondent")   # may edit the student database and bus stops
 FEE_ROLES = ("superadmin", "principal", "correspondent", "admin")   # may see fee amounts and dashboards
 
 
@@ -221,7 +222,10 @@ def parent_home(authorization: str = Header(None), x_role: str = Header(None)):
     routes = {r["id"]: r for r in van.vans(school.routes(), only_routes={k["route"] for k in kids})}
     out = []
     for k in kids:
-        out.append(school.card(k) | {
+        ri = routes.get(k.get("route"))
+        stop = next((x for x in (ri or {}).get("stops", []) if x["id"] == k.get("stop")), None)
+        out.append(school.card(k) | {"my_stop": stop,
+                                     "van_eta": van.eta_to_stop((ri or {}).get("position"), stop, bool((ri or {}).get("live"))),
             "attendance": school.student_attendance(k), "homework": school.homework(k["class"], 5),
             "teacher": (school.class_teacher(k["class"]) or {}).get("name"),
             "fee_reminder": school.fee_flag(k), "balance_pct": round(school.balance_pct(k) * 100),
@@ -291,7 +295,15 @@ def dashboard(authorization: str = Header(None), x_role: str = Header(None)):
     classes = sorted({int(s["class"]) for s in school.students()})
     return {"attendance": school.attendance_summary(), "trend": school.attendance_trend(7),
             "fees": school.fee_summary(), "students": len(school.students()),
-            "practicals": practicals.school_view(school.today(), classes)}
+            "practicals": practicals.school_view(school.today(), classes),
+            "fleet": _fleet()}
+
+
+def _fleet():
+    counts = {}
+    for s in school.students():
+        counts[s.get("route")] = counts.get(s.get("route"), 0) + 1
+    return [v | {"students": counts.get(v["id"], 0)} for v in van.vans(school.routes())]
 
 
 @router.post("/api/portal/fees/remind")
@@ -446,6 +458,76 @@ def routes(authorization: str = Header(None), x_role: str = Header(None)):
         for v in items:
             v["students"] = counts.get(v["id"], 0)
     return {"routes": items}
+
+
+class StopsIn(BaseModel):
+    stops: list[dict]
+
+
+@router.put("/api/portal/routes/{rid}/stops")
+def save_stops(rid: str, body: StopsIn, authorization: str = Header(None), x_role: str = Header(None)):
+    c = ctx(authorization, x_role, EDITORS)
+    r = _err(school.save_stops, rid, body.stops, c["phone"])
+    auth.audit(c["phone"], "bus_stops", {"route": rid, "stops": len(r["stops"])})
+    return r
+
+
+# ---------------------------------------------------------------- student database (admin + principal)
+@router.get("/api/portal/students")
+def students_list(cls: int = 0, q: str = "", authorization: str = Header(None), x_role: str = Header(None)):
+    c = ctx(authorization, x_role, EDITORS)
+    items = [s for s in school.students() if (not cls or int(s["class"]) == cls)]
+    if q:
+        ql = q.lower()
+        items = [s for s in items if ql in s["name"].lower() or ql in s["id"].lower() or ql in s["phone"]
+                 or ql in (s.get("area") or "").lower() or ql in (s.get("parent") or "").lower()]
+    items.sort(key=lambda s: (int(s["class"]), s.get("sno", 0)))
+    return {"items": [school.card(s, True) for s in items[:500]], "routes": school.routes(),
+            "can_fee": c["role"] in APPROVERS, "can_delete": c["role"] in APPROVERS}
+
+
+class StudentIn(BaseModel):
+    id: str | None = Field(None, max_length=20)
+    name: str | None = Field(None, max_length=80)
+    cls: int | None = None
+    section: str | None = Field(None, max_length=4)
+    gender: str | None = Field(None, max_length=2)
+    parent: str | None = Field(None, max_length=80)
+    phone: str | None = Field(None, max_length=16)
+    area: str | None = Field(None, max_length=60)
+    route: str | None = Field(None, max_length=20)
+    stop: str | None = Field(None, max_length=10)
+    fee_total: int | None = Field(None, ge=0, lt=1_000_000)
+
+    def fields(self):
+        d = {k: v for k, v in self.model_dump().items() if v is not None and k not in ("cls",)}
+        if self.cls is not None:
+            d["class"] = self.cls
+        return d
+
+
+@router.put("/api/portal/students/{sid}")
+def student_update(sid: str, body: StudentIn, authorization: str = Header(None), x_role: str = Header(None)):
+    c = ctx(authorization, x_role, EDITORS)
+    s = _err(school.update_student, sid, body.fields(), c["phone"], c["role"] in APPROVERS)
+    auth.audit(c["phone"], "student_edit", {"student": sid})
+    return school.card(s, True)
+
+
+@router.post("/api/portal/students")
+def student_add(body: StudentIn, authorization: str = Header(None), x_role: str = Header(None)):
+    c = ctx(authorization, x_role, EDITORS)
+    s = _err(school.add_student, body.fields(), c["phone"], c["role"] in APPROVERS)
+    auth.audit(c["phone"], "student_add", {"student": s["id"]})
+    return school.card(s, True)
+
+
+@router.delete("/api/portal/students/{sid}")
+def student_delete(sid: str, authorization: str = Header(None), x_role: str = Header(None)):
+    c = ctx(authorization, x_role, APPROVERS)
+    _err(school.delete_student, sid, c["phone"])
+    auth.audit(c["phone"], "student_delete", {"student": sid})
+    return {"ok": True}
 
 
 class RouteIn(BaseModel):

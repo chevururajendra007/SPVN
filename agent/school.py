@@ -301,6 +301,9 @@ def fee_summary() -> dict:
                      key=lambda x: -x["balance"])
     return {"total": tot, "paid": paid, "balance": tot - paid, "pct": round(paid / tot * 100) if tot else 0,
             "collection": daily_collection(7), "pending": len(fee_entries("pending")),
+            "status": {"paid": sum(balance(x) <= 0 for x in studs),
+                       "low": sum(balance(x) > 0 and not fee_flag(x) for x in studs),
+                       "high": sum(bool(fee_flag(x)) for x in studs)},
             "classes": classes, "flagged": flagged, "rule": "Reminder when more than 30% is unpaid, every 3 weeks",
             "last_run": store.get("fee_reminder_run")}
 
@@ -451,7 +454,9 @@ def card(s, fees: bool = True) -> dict:
     """Student card. fees=False (teachers, correspondent) hides every amount; only 'fee_due' (yes/no)
     remains so a class teacher can send a reminder without seeing money."""
     c = {"id": s["id"], "sno": s.get("sno"), "name": s["name"], "class": s["class"], "section": s.get("section", "A"),
-         "parent": s["parent"], "phone": s["phone"], "route": s.get("route"), "marks": s.get("marks", {})}
+         "gender": s.get("gender", ""), "parent": s["parent"], "phone": s["phone"], "route": s.get("route"),
+         "area": s.get("area", ""), "stop": s.get("stop", ""), "stop_name": stop_name(s.get("route"), s.get("stop")),
+         "marks": s.get("marks", {})}
     if fees:
         c |= {"fee_total": s["fee_total"], "fee_paid": s["fee_paid"], "balance": balance(s), "fee_flag": fee_flag(s)}
     else:
@@ -459,9 +464,60 @@ def card(s, fees: bool = True) -> dict:
     return c
 
 
+def _norm_stops(stops) -> list[dict]:
+    """Stops are {id, name, lat, lon}. Older data kept plain names: convert them."""
+    out = []
+    for i, x in enumerate(stops or [], 1):
+        if isinstance(x, str):
+            x = {"name": x}
+        lat, lon = x.get("lat"), x.get("lon")
+        try:
+            lat, lon = (round(float(lat), 6), round(float(lon), 6)) if lat not in (None, "") and lon not in (None, "") else (None, None)
+        except (TypeError, ValueError):
+            lat, lon = None, None
+        if lat is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            lat, lon = None, None
+        out.append({"id": str(x.get("id") or f"s{i}"), "name": str(x.get("name", "")).strip()[:60], "lat": lat, "lon": lon})
+    return out
+
+
 def routes() -> list[dict]:
     _ensure_seed()
-    return store.get("routes", []) or []
+    rs = store.get("routes", []) or []
+    for r in rs:
+        r["stops"] = _norm_stops(r.get("stops"))
+    return rs
+
+
+def stop_name(route_id, stop_id) -> str:
+    if not route_id or not stop_id or route_id == "Own":
+        return ""
+    r = next((x for x in routes() if x["id"] == route_id), None)
+    st = next((x for x in (r or {}).get("stops", []) if x["id"] == stop_id), None)
+    return st["name"] if st else ""
+
+
+def save_stops(rid, stops: list[dict], by="") -> dict:
+    """Replace a route's bus stops (in driving order). Keeps stop ids so students stay linked."""
+    rs = routes()
+    r = next((x for x in rs if x["id"] == rid), None)
+    if not r:
+        raise ValueError("Route not found")
+    clean = _norm_stops(stops)
+    if any(not x["name"] for x in clean):
+        raise ValueError("Every stop needs a name")
+    if len(clean) > 40:
+        raise ValueError("Up to 40 stops per route")
+    used = set()
+    n = max([int(x["id"][1:]) for x in r["stops"] + clean if x["id"][1:].isdigit()] + [0])
+    for x in clean:  # new stops get fresh ids; duplicates are renumbered
+        if x["id"] in used or not x["id"].startswith("s"):
+            n += 1
+            x["id"] = f"s{n}"
+        used.add(x["id"])
+    r["stops"] = clean
+    store.set("routes", rs)
+    return r
 
 
 def save_route(rid, device_id=None, driver=None, driver_phone=None):
@@ -474,6 +530,86 @@ def save_route(rid, device_id=None, driver=None, driver_phone=None):
             r[k] = str(v).strip()
     store.set("routes", rs)
     return r
+
+
+# ---------------------------------------------------------------- student database editing
+EDIT_FIELDS = ("name", "class", "section", "gender", "parent", "phone", "area", "route", "stop")
+
+
+def _clean_student(f: dict, base: dict, can_fees: bool) -> dict:
+    from auth import norm_phone, valid_mobile
+    out = dict(base)
+    for k in EDIT_FIELDS:
+        if k in f and f[k] is not None:
+            out[k] = str(f[k]).strip() if k != "class" else f[k]
+    try:
+        out["class"] = int(out["class"])
+        assert 1 <= out["class"] <= 12
+    except Exception:
+        raise ValueError("Class must be a number from 1 to 12")
+    if not out.get("name"):
+        raise ValueError("Student name is needed")
+    out["phone"] = norm_phone(out.get("phone"))
+    if not valid_mobile(out["phone"]) and not out["phone"].startswith("5"):  # 5xxxx = test numbers
+        raise ValueError("Parent mobile must be a valid 10-digit number")
+    out["name"], out["parent"] = out["name"][:80], (out.get("parent") or "Parent")[:80]
+    out["area"], out["section"] = (out.get("area") or "")[:60], (out.get("section") or "A")[:4]
+    rids = {r["id"]: r for r in routes()}
+    if out.get("route") not in rids:
+        out["route"], out["stop"] = "Own", ""
+    elif out.get("stop") and out["stop"] not in {x["id"] for x in rids[out["route"]]["stops"]}:
+        raise ValueError("Choose a bus stop from this route")
+    if "fee_total" in f and f["fee_total"] not in (None, ""):
+        if not can_fees:
+            raise ValueError("Only the principal can change the annual fee")
+        out["fee_total"] = max(int(f["fee_total"]), int(out.get("fee_paid", 0)))
+    return out
+
+
+def _log_change(sid, by, before, after):
+    ch = {k: [before.get(k), after.get(k)] for k in set(EDIT_FIELDS) | {"fee_total"}
+          if before.get(k) != after.get(k)}
+    if ch:
+        store.push("student_log", {"at": int(time.time()), "by": by, "student": sid, "changes": ch}, cap=3000)
+    return ch
+
+
+def update_student(sid, fields: dict, by: str, can_fees: bool) -> dict:
+    studs = students()
+    i = next((n for n, x in enumerate(studs) if x["id"] == sid), None)
+    if i is None:
+        raise ValueError("Student not found")
+    new = _clean_student(fields, studs[i], can_fees)
+    _log_change(sid, by, studs[i], new)
+    studs[i] = new
+    store.set("students", studs)
+    return new
+
+
+def add_student(fields: dict, by: str, can_fees: bool) -> dict:
+    studs = students()
+    sid = str(fields.get("id") or "").strip().upper()
+    if not sid:
+        raise ValueError("Admission number is needed")
+    if any(x["id"] == sid for x in studs):
+        raise ValueError("This admission number already exists")
+    base = {"id": sid, "sno": 0, "name": "", "class": fields.get("class", 1), "section": "A", "gender": "",
+            "parent": "", "phone": "", "route": "Own", "stop": "", "area": "", "marks": {},
+            "fee_total": 0, "fee_paid": 0}
+    new = _clean_student(fields | {"fee_total": fields.get("fee_total") if can_fees else None}, base, can_fees)
+    new["sno"] = 1 + max([x.get("sno", 0) for x in studs if int(x["class"]) == new["class"]] + [0])
+    studs.append(new)
+    store.set("students", studs)
+    _log_change(sid, by, {}, new)
+    return new
+
+
+def delete_student(sid, by: str):
+    studs = students()
+    if not any(x["id"] == sid for x in studs):
+        raise ValueError("Student not found")
+    store.set("students", [x for x in studs if x["id"] != sid])
+    store.push("student_log", {"at": int(time.time()), "by": by, "student": sid, "changes": {"deleted": [sid, None]}}, cap=3000)
 
 
 # ---------------------------------------------------------------- Excel import (same format as the test workbook)
@@ -497,7 +633,7 @@ def import_excel(content: bytes, by: str) -> dict:
         rid = str(r.get("route id") or "").strip()
         if rid:
             routes_.append({"id": rid, "name": str(r.get("route name") or rid),
-                            "stops": [x.strip() for x in str(r.get("stops") or "").split("→") if x.strip()],
+                            "stops": _norm_stops([x.strip() for x in str(r.get("stops") or "").split("→") if x.strip()]),
                             "device_id": str(r.get("gps device id (traccar)") or "").strip(),
                             "driver": str(r.get("driver") or ""), "driver_phone": norm_phone(r.get("driver mobile"))})
             route_names[routes_[-1]["name"].lower()] = rid
@@ -517,10 +653,14 @@ def import_excel(content: bytes, by: str) -> dict:
             errors.append(f"Row {i}: needs Admission No, Student Name and Class")
             continue
         route = str(r.get("route") or "Own").strip()
-        studs.append({"id": sid, "sno": int(r.get("s.no") or len(studs) + 1), "name": name, "class": cls,
+        rid = route_names.get(route.lower(), route if route in {x["id"] for x in routes_} else "Own")
+        stop_txt = str(r.get("bus stop") or "").strip().lower()
+        rstops = next((x["stops"] for x in routes_ if x["id"] == rid), [])
+        stop = next((x["id"] for x in rstops if x["name"].lower() == stop_txt), "")
+        studs.append({"area": str(r.get("area") or "").strip()[:60], "stop": stop,"id": sid, "sno": int(r.get("s.no") or len(studs) + 1), "name": name, "class": cls,
                       "section": str(r.get("section") or "A"), "gender": str(r.get("gender") or ""),
                       "parent": str(r.get("parent name") or "Parent"), "phone": norm_phone(r.get("parent mobile")),
-                      "route": route_names.get(route.lower(), route if route in {x["id"] for x in routes_} else "Own"),
+                      "route": rid,
                       "fee_total": int(r.get("annual fee") or 0), "fee_paid": int(r.get("fee paid") or 0),
                       "marks": marks.get(sid, {})})
     staff = []

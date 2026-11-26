@@ -111,6 +111,16 @@ def _pos(p, now, dev):
             "age_s": int(now - p["ts"]), "trail": trail[:60]}
 
 
+def eta_to_stop(position: dict | None, stop: dict | None, live: bool) -> dict | None:
+    """Rough distance and time from the van to a bus stop: straight line x 1.3 for roads, 20 km/h average."""
+    if not position or not stop or stop.get("lat") is None:
+        return None
+    from math import asin, cos, radians, sin, sqrt
+    la1, lo1, la2, lo2 = map(radians, (position["lat"], position["lon"], stop["lat"], stop["lon"]))
+    km = 2 * 6371 * asin(sqrt(sin((la2 - la1) / 2) ** 2 + cos(la1) * cos(la2) * sin((lo2 - lo1) / 2) ** 2)) * 1.3
+    return {"km": round(km, 1), "minutes": max(1, round(km / 20 * 60)) if live else None, "near": km < 0.4}
+
+
 def status_text(items: list[dict]) -> str:
     if not items:
         return "No bus route is linked to your child."

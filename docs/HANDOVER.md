@@ -39,8 +39,10 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | Class teacher can only see and mark their own class | `portal_api._class_for`, `skills.py` |
 | Admin fee entry is pending until a principal/super admin approves; only approved money counts | `school.submit_fee_entry`, `decide_fee_entry` |
 | Admin is write-only: no role changes, deletes, route edits, imports or attendance edits | `portal_api` permissions |
+| Student database: admin, principal, correspondent, super admin can add/edit students (name, class, parent, phone, area, bus route + stop); only principal/correspondent/super admin can change the yearly fee or remove a student; every change is in `student_log` | `school.update_student/add_student/delete_student`, `portal_api.EDITORS` |
+| Bus stops: same editors set stop names, order and map location; parents see "Van is N km from your stop · about M min" | `school.save_stops`, `van.eta_to_stop` |
 | Only a super admin assigns or removes roles | `portal_api.add_member/remove_member` |
-| Fee amounts + dashboards only for principal/super admin/admin; teachers and correspondent get none | `portal_api.FEE_ROLES`, `school.card(fees=False)` |
+| Fee amounts + dashboards only for principal/correspondent/super admin/admin; teachers get none (correspondent = principal) | `portal_api.FEE_ROLES`, `school.card(fees=False)` |
 | Admin works only on principal-approved office devices (+ optional OFFICE_IPS, OFFICE_HOURS) | `auth.office_check` |
 | Parent sees only children whose record has their mobile number | `school.children`, `portal_api` |
 | Test numbers starting with 5 are never messaged | `notify._valid` |
@@ -81,6 +83,8 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 | "Database not connected" | Team & data → System status | Check the Neon integration on the project and `DATA_KEY`; redeploy |
 | Parent says "number not registered" | Search the child; check the parent mobile | Fix the number in Excel and re-import |
 | WhatsApp not arriving | WhatsApp tab: status `failed`/`queued` | Check token/templates; meanwhile use one-tap send |
+| A van phone shows as "Unassigned phone" | Bus routes (principal) | Choose its route and tap "Link this phone" |
+| Parent sees no distance to stop | Students tab: child has route + stop? Bus routes: stop has a location? | Edit bus stops → tap stop → tap map or 📍 |
 | Van not moving on map | Bus routes: "No GPS yet"/"Offline" | Phone: Traccar service on, location "Allow all the time", battery saver off |
 | Fee reminders did not go | Fees tab → "Last run" | Vercel → Cron Jobs; press "Send due reminders now" |
 | Need to roll back | Vercel → Deployments | Promote the previous deployment |

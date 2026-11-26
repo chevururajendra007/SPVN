@@ -157,6 +157,9 @@ def test_principal_dashboard_and_search(client):
     d = client.get("/api/portal/dashboard", headers=h).json()
     assert d["students"] == 100 and d["attendance"]["marked"] >= 1
     assert d["fees"]["flagged"] and all(x["pct"] > 30 for x in d["fees"]["flagged"])
+    st = d["fees"]["status"]  # pie chart: every student is in exactly one fee group
+    assert st["paid"] + st["low"] + st["high"] == d["students"] and st["high"] == len(d["fees"]["flagged"])
+    assert isinstance(d["fleet"], list)
     assert client.get(f"/api/portal/search?q={KID_O['id']}", headers=h).json()["results"][0]["class"] == KID_O["class"]
 
 
@@ -480,3 +483,55 @@ def test_sessions_last_a_year():
     body = j.loads(base64.urlsafe_b64decode(t.split(".")[0] + "=="))
     import time
     assert body["exp"] - time.time() > 360 * 86400
+
+
+def test_bus_stops_and_student_area_stop_and_parent_eta(client):
+    a, _ = login(client, DUAL_PHONE, "admin")
+    rid = KID_A["route"]
+    r = client.put(f"/api/portal/routes/{rid}/stops", headers=a, json={"stops": [
+        {"name": "School gate", "lat": 14.0400, "lon": 79.9800},
+        {"name": "NCR Nagar", "lat": 14.0600, "lon": 79.9900}]}).json()
+    assert [s["name"] for s in r["stops"]] == ["School gate", "NCR Nagar"] and r["stops"][1]["id"]
+    stop_id = r["stops"][1]["id"]
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    assert client.put(f"/api/portal/routes/{rid}/stops", headers=t, json={"stops": []}).status_code == 403
+    e = client.put(f"/api/portal/students/{KID_A['id']}", headers=a,
+                   json={"area": "NCR Nagar", "route": rid, "stop": stop_id}).json()
+    assert e["area"] == "NCR Nagar" and e["stop_name"] == "NCR Nagar"
+    assert client.put(f"/api/portal/students/{KID_A['id']}", headers=a, json={"stop": "s999"}).status_code == 400
+    # van near the stop -> parent sees distance and minutes
+    import van
+    dev = next(x for x in client.get("/api/portal/routes", headers=a).json()["routes"] if x["id"] == rid).get("device_id") or "eta-dev"
+    p, _ = login(client, PRINCIPAL, "principal")
+    client.post(f"/api/portal/routes/{rid}", headers=p, json={"device_id": dev})
+    assert client.post(f"/api/van/loc/vankey?id={dev}&lat=14.0500&lon=79.9850&speed=10").json()["ok"]
+    k, _ = login(client, PARENT_A, "parent")
+    kid = client.get("/api/portal/parent", headers=k).json()["children"][0]
+    assert kid["my_stop"]["name"] == "NCR Nagar" and kid["van_eta"]["km"] > 0 and kid["van_eta"]["minutes"] >= 1
+    d = client.get("/api/portal/dashboard", headers=p).json()
+    assert any(f["id"] == rid and f["live"] and f["students"] >= 1 for f in d["fleet"])
+
+
+def test_student_database_edit_permissions(client):
+    a, _ = login(client, DUAL_PHONE, "admin")
+    assert client.put(f"/api/portal/students/{KID_O['id']}", headers=a, json={"fee_total": 1}).status_code == 400
+    new = client.post("/api/portal/students", headers=a, json={"id": "SPV9901", "name": "New Child", "cls": 4,
+                                                             "parent": "Test Parent", "phone": "9876500011",
+                                                             "area": "Vidyanagar"}).json()
+    assert new["id"] == "SPV9901" and new["class"] == 4 and new["area"] == "Vidyanagar"
+    assert client.post("/api/portal/students", headers=a, json={"id": "SPV9901", "name": "Dup", "cls": 4,
+                                                              "phone": "9876500011"}).status_code == 400
+    assert client.post("/api/portal/students", headers=a, json={"id": "SPV9902", "name": "Bad", "cls": 4,
+                                                              "phone": "12345"}).status_code == 400
+    assert client.delete("/api/portal/students/SPV9901", headers=a).status_code == 403
+    t, _ = login(client, TEACHER_PHONE, "teacher")
+    assert client.put(f"/api/portal/students/{KID_O['id']}", headers=t, json={"area": "X"}).status_code == 403
+    assert client.get("/api/portal/students", headers=t).status_code == 403
+    p, _ = login(client, PRINCIPAL, "principal")
+    fee = client.put("/api/portal/students/SPV9901", headers=p, json={"fee_total": 21000}).json()
+    assert fee["fee_total"] == 21000
+    lst = client.get("/api/portal/students?cls=4&q=new child", headers=p).json()
+    assert lst["items"][0]["id"] == "SPV9901" and lst["can_delete"] is True
+    assert client.delete("/api/portal/students/SPV9901", headers=p).json()["ok"]
+    _, roles = login(client, "9876500011") if False else (None, None)
+    assert client.post("/api/auth/otp", json={"phone": "9876500011"}).status_code == 404
