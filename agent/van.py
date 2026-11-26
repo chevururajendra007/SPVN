@@ -71,13 +71,27 @@ def parse(fields: dict, body: dict | None) -> dict:
             "battery": None if batt is None else round(batt), "received": time.time()}
 
 
-def save_point(p: dict):
+OLD_POINT = 6 * 3600  # Traccar Client uploads its offline backlog (oldest first); skip points older than this
+
+
+def save_point(p: dict) -> str:
+    """Keep only the newest position as 'latest'. Old buffered points are accepted (so the phone
+    deletes them) but never shown as the van's current place."""
+    now = time.time()
+    if p["ts"] > now + 300:      # phone clock ahead: trust the server time
+        p["ts"] = now
+    if now - p["ts"] > OLD_POINT:
+        return "old point from the phone's backlog - skipped"
     latest = store.get("van:latest", {}) or {}
+    cur = latest.get(p["id"])
+    if cur and cur.get("ts", 0) > p["ts"]:
+        return "older than the last position - skipped"
     latest[p["id"]] = p
     store.set("van:latest", latest)
-    trail = store.get(f"van:trail:{p['id']}", []) or []
+    trail = [t for t in (store.get(f"van:trail:{p['id']}", []) or []) if now - t[2] < OLD_POINT]
     trail.insert(0, [p["lat"], p["lon"], p["ts"]])
     store.set(f"van:trail:{p['id']}", trail[:TRAIL])
+    return "ok"
 
 
 def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
@@ -192,6 +206,12 @@ async def receive(key: str, request: Request):
     if p["id"] not in known and p["id"] not in latest and sum(d not in known for d in latest) >= MAX_UNASSIGNED:
         note_attempt(p["id"], False, "too many unlinked phones - link or remove some")
         raise HTTPException(403, "too many unassigned devices")
-    save_point(p)  # unknown phones are kept as "Unassigned phone" until linked to a route
-    note_attempt(p["id"], True, "linked" if p["id"] in known else "not linked to a route yet")
+    res = save_point(p)  # unknown phones are kept as "Unassigned phone" until linked to a route
+    link = "linked" if p["id"] in known else "not linked to a route yet"
+    if res == "ok":
+        note_attempt(p["id"], True, link)
+    else:
+        age_h = int((time.time() - p["ts"]) // 3600)
+        note_attempt(p["id"], True, f"{link} - sending saved old locations ({age_h} h old), please wait")
+        print(f"[van] {p['id']}: {res} ({age_h} h old)")
     return {"ok": True}

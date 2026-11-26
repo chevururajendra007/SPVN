@@ -246,6 +246,8 @@ def test_van_gps_and_route_privacy(client):
     assert last["id"] == "777" and not last["ok"] and "key" in last["reason"]
     client.post("/api/van/loc/vankey", json={"device_id": "111", "location": {
         "timestamp": "2030-01-01T00:00:00Z", "coords": {"latitude": 14.05, "longitude": 79.99, "speed": 8}}})
+    import time as _t  # phone uploading its 3-week-old offline backlog must not move the van
+    client.post(f"/api/van/loc/vankey?id=111&lat=13.50&lon=79.50&timestamp={int(_t.time() - 21 * 86400)}")
     a, _ = login(client, PARENT_A, "parent")
     mine = client.get("/api/portal/routes", headers=a).json()["routes"]
     assert [r["id"] for r in mine] == [KID_A["route"]] and mine[0]["position"]["lat"] == 14.05

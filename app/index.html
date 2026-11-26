@@ -695,7 +695,7 @@ async routes(v){
         return `<div class="eta"><span style="font-size:1.5rem">📍</span><div><small class="muted">${esc(m.name)}</small><br>${etaText(e,m.stop,r.live)}</div></div>`}).join('');
       return `<div class="card"><div class="inline" style="justify-content:space-between"><b style="color:var(--navy);font-family:var(--head);font-size:1.1rem"><span class="dot ${r.live?'live':''}"></span>${esc(r.name)}</b>${r.students!=null?`<span class="chip mute">${r.students} students</span>`:''}</div>
         <p class="muted" style="margin-top:4px">${st}${canEdit&&!dev?` · GPS phone: ${r.device_id?'<b>'+esc(r.device_id)+'</b>':'<b style="color:var(--bad)">not set</b>'}`:''}</p>
-        ${r.stops&&r.stops.length?`<p class="muted">${r.stops.map(x=>esc(x.name)+(x.lat==null&&canStops?' <span title="location not set">·?</span>':'')).join(' → ')}</p>`:''}
+        ${r.stops&&r.stops.length?`<p class="muted">${r.stops.map(x=>esc(x.name)+(x.lat==null&&canStops?' <small style="color:var(--warn)">(not on map)</small>':'')).join(' → ')}</p>`:''}
         ${etas}
         ${r.driver?`<p class="muted">Driver: ${esc(r.driver)} ${r.driver_phone?`· <a href="tel:${esc(r.driver_phone)}">${esc(r.driver_phone)}</a>`:''}</p>`:''}
         <div class="inline" style="margin-top:8px">${p?`<a class="btn btn-line btn-sm" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lon}">Open in Google Maps</a>`:''}
