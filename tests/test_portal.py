@@ -217,7 +217,9 @@ def test_homework_to_class_parents(client):
     r = client.post("/api/portal/homework", headers=h, json={"subject": "Maths", "text": "Table of 7"}).json()
     assert r["item"]["class"] == TEACHER["class"] and r["messages"]["queued"] == 1 and r["group_link"].startswith("https://wa.me/?text=")
     p, _ = login(client, DUAL_PHONE, "parent")
-    assert client.get("/api/portal/parent", headers=p).json()["children"][0]["homework"][0]["text"] == "Table of 7"
+    kid = client.get("/api/portal/parent", headers=p).json()["children"][0]
+    assert kid["homework"][0]["text"] == "Table of 7"
+    assert kid["teacher_phone"] == TEACHER["phone"]  # parents can call / WhatsApp the class teacher
 
 
 def test_van_gps_and_route_privacy(client):

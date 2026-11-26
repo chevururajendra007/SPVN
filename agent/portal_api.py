@@ -228,6 +228,7 @@ def parent_home(authorization: str = Header(None), x_role: str = Header(None)):
                                      "van_eta": van.eta_to_stop((ri or {}).get("position"), stop, bool((ri or {}).get("live"))),
             "attendance": school.student_attendance(k), "homework": school.homework(k["class"], 5),
             "teacher": (school.class_teacher(k["class"]) or {}).get("name"),
+            "teacher_phone": (school.class_teacher(k["class"]) or {}).get("phone"),
             "fee_reminder": school.fee_flag(k), "balance_pct": round(school.balance_pct(k) * 100),
             "route_info": routes.get(k.get("route")), "lessons": lessons.notes(k["class"], 5),
             "practical": practicals.class_view(k["class"], school.today())})

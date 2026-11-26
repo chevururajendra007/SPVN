@@ -162,8 +162,9 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 details summary{cursor:pointer}
 
 /* chat */
-.chat{display:flex;flex-direction:column;height:100%}
-.log{flex:1;display:flex;flex-direction:column;gap:8px;min-height:240px}
+.chat{display:flex;flex-direction:column;min-height:100%}
+.chat form{position:sticky;bottom:-32px;background:var(--paper);padding:10px 0 14px;margin-top:auto;border-top:1px solid var(--line)}
+.log{display:flex;flex-direction:column;gap:8px;min-height:120px}
 .bub{max-width:88%;padding:10px 13px;border-radius:16px;font-size:.93rem;line-height:1.5;white-space:pre-wrap;word-wrap:break-word}
 .bub.bot{background:#fff;border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
 .bub.me{background:var(--ink-700);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
@@ -439,6 +440,7 @@ async home(v){
     const exams=Object.keys(k.marks||{});const subs=exams.length?Object.keys(k.marks[exams[0]]):[];
     return `<div class="card">
       <div class="inline" style="justify-content:space-between"><div><b style="font-size:1.08rem;color:var(--navy)">${esc(k.name)}</b><div class="muted">Class ${k.class}-${esc(k.section)} · Class teacher ${esc(k.teacher||'—')} · ${esc(k.id)}</div></div>${today}</div>
+      ${k.teacher_phone?`<div class="inline" style="margin-top:10px"><a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/91${esc(k.teacher_phone)}?text=${encodeURIComponent(`Namaste ${k.teacher||'Teacher'} garu, I am the parent of ${k.name} (Class ${k.class}-${k.section}). `)}">💬 Message class teacher</a><a class="btn btn-line btn-sm" href="tel:+91${esc(k.teacher_phone)}">📞 Call ${esc(k.teacher||'teacher')} · ${esc(k.teacher_phone)}</a></div>`:''}
       ${k.fee_reminder?`<div class="banner warn" style="margin-top:12px">💰 <b>Fee reminder:</b> ${rs(k.balance)} pending (${k.balance_pct}% of ${rs(k.fee_total)}). Please pay at the school office.</div>`:''}
       <div class="tiles" style="margin-top:12px">
         <div class="tile"><small>Attendance</small><b>${a.pct??'—'}${a.pct!=null?'%':''}</b><em>${a.present} present · ${a.absent} absent (${a.days} days)</em></div>
@@ -795,7 +797,7 @@ async ask(v){
     admin:["Fee collection today","WhatsApp outbox","Today's attendance","Where are the vans?"]}[S.role];
   v.innerHTML=`<div class="chat"><h2 class="h">Ask SPV</h2><div class="log" id="log"></div><div class="chips" id="chips"></div>
     <form class="f" id="cf" style="grid-template-columns:1fr auto"><input id="cq" placeholder="Ask in English or తెలుగు…" maxlength="2000"><button class="btn btn-navy">Send</button></form></div>`;
-  const add=(t,c)=>{const d=document.createElement('div');d.className='bub '+c;d.textContent=t;$('log').appendChild(d);d.scrollIntoView({block:'end'});return d};
+  const add=(t,c)=>{const d=document.createElement('div');d.className='bub '+c;d.textContent=t;$('log').appendChild(d);$('view').scrollTop=$('view').scrollHeight;return d};
   if(!S.chat.length)add(`Namaste! 🙏 I answer from the school's own records for your ${ROLE[S.role].n.toLowerCase()} login.`,'bot');
   S.chat.forEach(m=>add(m.content,m.role==='user'?'me':'bot'));
   chips.forEach(c=>{const b=document.createElement('button');b.type='button';b.textContent=c;b.onclick=()=>send(c);$('chips').appendChild(b)});
