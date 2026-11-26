@@ -108,13 +108,79 @@ def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
         p = latest.get(r.get("device_id") or "")
         if p and now - p["ts"] > OLD_POINT:
             p = None  # weeks-old position: don't show it as where the van is
-        out.append(dict(r, live=_live(p, now), position=_pos(p, now, r.get("device_id"))))
+        pos = _pos(p, now, r.get("device_id"))
+        if pos:
+            pos["place"] = place_name(pos["lat"], pos["lon"])
+            pos["near_stop"] = nearest_stop(pos, r.get("stops"))
+        out.append(dict(r, live=_live(p, now), position=pos))
     if only_routes is None:  # unassigned test phones (management view only)
         for dev, p in latest.items():
             if dev not in assigned and dev == dev.lower() and now - p["ts"] < 86400:
                 out.append({"id": f"dev-{dev}", "name": f"Unassigned phone {dev[-4:]}", "stops": [],
                             "device_id": dev, "live": _live(p, now), "position": _pos(p, now, dev)})
     return out
+
+
+# ---------------------------------------------------------------- place names (free OpenStreetMap lookup)
+GEO_URL = "https://nominatim.openstreetmap.org/reverse"
+GEO_TTL = 30 * 86400   # a street keeps its name; cache per ~100 m square for 30 days
+
+
+def _geo_key(lat, lon):
+    return f"geo:{round(lat, 3)}:{round(lon, 3)}"
+
+
+def _format_place(a: dict) -> str:
+    road = a.get("road") or a.get("pedestrian") or a.get("residential")
+    area = a.get("neighbourhood") or a.get("suburb") or a.get("quarter") or a.get("hamlet")
+    town = a.get("village") or a.get("town") or a.get("city") or a.get("county")
+    parts = []
+    for x in (road, area, town):
+        if x and x not in parts:
+            parts.append(x)
+    return ", ".join(parts[:3])
+
+
+def place_name(lat: float, lon: float, lookup: bool = True) -> str | None:
+    """'NCR Nagar Road, Vidyanagar, Kota' for a position. Cached; at most one new lookup per second
+    (OpenStreetMap's rule). Returns None when not known yet - the next refresh fills it in."""
+    if os.getenv("GEOCODE", "on").lower() in ("off", "0", "false"):
+        return None
+    key = _geo_key(lat, lon)
+    hit = store.get(key)
+    if hit is not None:
+        return hit or None
+    if not lookup or store.get("geo:busy"):
+        return None
+    store.set("geo:busy", 1, ttl=2)
+    import urllib.parse
+    import urllib.request
+    q = urllib.parse.urlencode({"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 17,
+                                "addressdetails": 1, "accept-language": "en"})
+    try:
+        req = urllib.request.Request(f"{GEO_URL}?{q}", headers={
+            "User-Agent": "SPV-School-Portal/1.0 (https://spvn.vercel.app; school van tracking)"})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            name = _format_place(json.loads(r.read()).get("address") or {})
+        store.set(key, name, ttl=GEO_TTL)
+        return name or None
+    except Exception as e:
+        print(f"[van] place lookup failed: {type(e).__name__}")
+        store.set(key, "", ttl=600)  # try again in 10 minutes
+        return None
+
+
+def _km(a, b):
+    from math import asin, cos, radians, sin, sqrt
+    la1, lo1, la2, lo2 = map(radians, (a["lat"], a["lon"], b["lat"], b["lon"]))
+    return 2 * 6371 * asin(sqrt(sin((la2 - la1) / 2) ** 2 + cos(la1) * cos(la2) * sin((lo2 - lo1) / 2) ** 2))
+
+
+def nearest_stop(pos: dict, stops: list[dict]) -> dict | None:
+    best = min(((_km(pos, x), x) for x in stops or [] if x.get("lat") is not None), default=None, key=lambda t: t[0])
+    if not best or best[0] > 2:
+        return None
+    return {"name": best[1]["name"], "m": int(best[0] * 1000)}
 
 
 def _live(p, now):
@@ -152,7 +218,10 @@ def status_text(items: list[dict]) -> str:
         when = "just now" if mins < 1 else f"{mins} min ago"
         state = ("offline (GPS not sending)" if not v["live"] else
                  f"moving at {p['kmh']:.0f} km/h" if (p.get("kmh") or 0) > 3 else "stopped")
-        out.append(f"{v['name']}: {state}, last update {when}. Map: https://www.google.com/maps?q={p['lat']},{p['lon']}")
+        where = f" near {p['place']}" if p.get("place") else ""
+        stop = f" ({p['near_stop']['m']} m from {p['near_stop']['name']} stop)" if p.get("near_stop") else ""
+        out.append(f"{v['name']}: {state}{where}{stop}, last update {when}. "
+                   f"Map: https://www.google.com/maps?q={p['lat']},{p['lon']}")
     return "\n".join(out)
 
 

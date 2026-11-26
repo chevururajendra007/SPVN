@@ -49,7 +49,7 @@ def client(tmp_path_factory):
         "SPV_STORE_FILE": str(tmp_path_factory.mktemp("db") / "store.json"),
         "OTP_DEV_MODE": "true", "JWT_SECRET": "test-secret", "PRINCIPAL_PHONES": PRINCIPAL,
         "SUPERADMIN_PHONES": PRINCIPAL, "ADMIN_PHONES": DUAL_PHONE, "CORRESPONDENT_PHONES": PRINCIPAL, "VAN_KEY": "vankey", "CRON_SECRET": "cron",
-        "LLM_PROVIDER": "offline", "ADMIN_PASSKEY": "false", "DATA_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+        "LLM_PROVIDER": "offline", "ADMIN_PASSKEY": "false", "GEOCODE": "off", "DATA_KEY": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
         "SEED_DATA": base64.b64encode(gzip.compress(Path(SEED).read_bytes())).decode()})
     for k in ("WHATSAPP_TOKEN", "WHATSAPP_PHONE_ID"):
         os.environ.pop(k, None)
@@ -577,3 +577,24 @@ def test_van_phone_ids_ignore_case_and_startup_message(client):
     client.post(f"/api/portal/routes/{by_no['Route 1']['id']}", headers=h, json={"device_id": "Vakadu route 3"})
     ids = {r["id"]: r["device_id"] for r in client.get("/api/portal/routes", headers=h).json()["routes"]}
     assert ids[by_no["Route 1"]["id"]] == "vakadu route 3" and ids[by_no["Route 3"]["id"]] == ""
+
+
+def test_van_place_name_and_nearest_stop(client, monkeypatch):
+    import io
+    import json as _j
+    import urllib.request
+    import van
+    calls = []
+
+    def fake_open(req, timeout=0):
+        calls.append(req.full_url)
+        assert "SPV-School-Portal" in req.get_header("User-agent")  # OpenStreetMap requires a real app name
+        return io.BytesIO(_j.dumps({"address": {"road": "NCR Nagar Road", "suburb": "Vidyanagar",
+                                                "town": "Kota"}}).encode())
+    monkeypatch.setenv("GEOCODE", "on")
+    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    assert van.place_name(14.0391, 79.9712) == "NCR Nagar Road, Vidyanagar, Kota"
+    assert van.place_name(14.03912, 79.97118) == "NCR Nagar Road, Vidyanagar, Kota" and len(calls) == 1  # cached
+    st = van.nearest_stop({"lat": 14.0391, "lon": 79.9712},
+                          [{"name": "Far", "lat": 14.20, "lon": 79.90}, {"name": "NCR Nagar", "lat": 14.0400, "lon": 79.9712}])
+    assert st["name"] == "NCR Nagar" and 50 < st["m"] < 150
