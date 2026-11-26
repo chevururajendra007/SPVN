@@ -236,6 +236,12 @@ def test_van_gps_and_route_privacy(client):
     seen = {x["id"]: x for x in rs["attempts"]}  # every attempt is visible to management, also rejected ones
     assert seen["999"]["ok"] and seen["111"]["ok"]
     client.post("/api/van/loc/wrong?id=777&lat=14&lon=79")
+    # Traccar Client posting a form body (needs no extra library on Vercel)
+    r = client.post("/api/van/loc/vankey", content=b"id=555&lat=14.03&lon=79.97&speed=5&batt=80",
+                    headers={"Content-Type": "application/x-www-form-urlencoded"})
+    assert r.json()["ok"]
+    assert any(x["device_id"] == "555" for x in client.get("/api/portal/routes", headers=h).json()["routes"])
+    client.post("/api/van/loc/wrong?id=777&lat=14&lon=79")
     last = client.get("/api/portal/routes", headers=h).json()["attempts"][0]
     assert last["id"] == "777" and not last["ok"] and "key" in last["reason"]
     client.post("/api/van/loc/vankey", json={"device_id": "111", "location": {

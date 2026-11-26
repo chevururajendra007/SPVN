@@ -84,6 +84,7 @@ def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
     """Routes with their live van position. only_routes limits what a parent can see."""
     latest = store.get("van:latest", {}) or {}
     assigned = {r.get("device_id") for r in route_list if r.get("device_id")}
+    store.get_many([f"van:trail:{d}" for d in latest])  # one round trip; _pos below reads from the cache
     now = time.time()
     out = []
     for r in route_list:
@@ -166,8 +167,9 @@ async def receive(key: str, request: Request):
                 body = json.loads(raw)
                 if isinstance(body, list):
                     body = body[-1] if body else {}
-            else:
-                fields.update((await request.form()).items())
+            else:  # OsmAnd form body (id=..&lat=..&lon=..)
+                from urllib.parse import parse_qsl
+                fields.update(parse_qsl(raw.decode("utf-8", "replace"), keep_blank_values=False))
         except Exception:
             pass
     dev_hint = str(fields.get("id") or (body or {}).get("device_id") or (body or {}).get("id") or "unknown")
@@ -181,6 +183,8 @@ async def receive(key: str, request: Request):
         p = parse(fields, body)
     except ValueError as e:
         note_attempt(dev_hint, False, "no location in the message (GPS off or no fix yet)")
+        print(f"[van] unreadable: type={request.headers.get('content-type', '')[:60]} "
+              f"query={sorted(request.query_params.keys())} body={raw[:200]!r}")
         raise HTTPException(400, str(e))
     import school
     known = {r.get("device_id") for r in school.routes() if r.get("device_id")}

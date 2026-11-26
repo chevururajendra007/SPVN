@@ -50,7 +50,18 @@ def install(app):
                           "label": request.headers.get("x-device-label", "")[:80], "ip": ip,
                           "host": request.headers.get("x-forwarded-host") or request.headers.get("host", ""),
                           "proto": request.headers.get("x-forwarded-proto") or request.url.scheme})
-        return await call_next(request)
+        tok = store.begin_request()
+        try:
+            return await call_next(request)
+        except Exception as e:  # one readable line in the Vercel logs instead of a cut-off traceback
+            import traceback
+            tb = traceback.extract_tb(e.__traceback__)
+            where = " <- ".join(f"{f.filename.rsplit('/', 1)[-1]}:{f.lineno}" for f in tb[-4:][::-1])
+            print(f"[error] {request.method} {request.url.path}: {type(e).__name__}: {str(e)[:300]} at {where}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Server error. Please try again."}, status_code=500)
+        finally:
+            store.end_request(tok)
 
 
 def ctx(authorization: str | None, x_role: str | None, allow: tuple, passkey: bool = True) -> dict:

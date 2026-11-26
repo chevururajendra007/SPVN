@@ -14,7 +14,8 @@
 <meta name="apple-mobile-web-app-title" content="SPV Portal">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+Tammudu+2:wght@500;600;700&family=Hind+Guntur:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Tammudu+2:wght@600;700&family=Hind+Guntur:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* SPV palette: indigo ink (school ink, uniform), turmeric (festival, rangoli), paddy green (Kota fields),
    kumkum/rust (alerts), notebook paper. Chart slots validated for colour-blind safety (dataviz validator). */
@@ -127,7 +128,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .bar .tr{height:14px;background:var(--track);border-radius:4px;overflow:hidden}
 .bar .fl{height:100%;background:var(--indigo);border-radius:0 4px 4px 0}
 .bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--text);font-weight:600}
-.bar.nm .v{color:var(--muted);font-weight:500;font-size:.78rem;white-space:nowrap}
+.bar.nm .v{color:var(--muted);font-weight:400;font-size:.78rem;white-space:nowrap}
 .line svg{width:100%;height:170px;display:block}
 .line .ax{stroke:var(--line)}.line .lbl{fill:var(--muted);font-size:10px}
 .line .pt{fill:#fff;stroke:var(--indigo);stroke-width:2}
@@ -143,6 +144,10 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .f textarea{min-height:90px;resize:vertical}
 .f input:focus,.f select:focus,.f textarea:focus{outline:none;border-color:var(--turmeric)}
 .f label{font-size:.82rem;color:var(--muted);margin-bottom:-4px}
+.search{position:relative;display:flex;gap:8px;align-items:center}
+.search input{flex:1;padding:12px 14px 12px 42px;border:1.5px solid var(--line);border-radius:14px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%235A6386' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 13px center;font-size:1rem}
+.search input:focus{outline:none;border-color:var(--turmeric)}
+.search button{flex:none;width:46px;height:46px;border-radius:14px;background:var(--ink-700);color:#fff;font-size:1.1rem}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
@@ -420,6 +425,11 @@ function etaText(e,stop,live){if(!stop)return '';if(stop.lat==null)return `Your 
   if(!e)return `Your stop: <b>${esc(stop.name)}</b> · van GPS not available`;
   if(!live)return `Your stop: <b>${esc(stop.name)}</b> · van offline, last seen ${e.km} km away`;
   return e.near?`🚐 Van is <b>at / near ${esc(stop.name)}</b>`:`🚐 Van is <b>${e.km} km</b> from ${esc(stop.name)} · about <b>${e.minutes} min</b>`}
+let ALL=null;
+async function allStudents(force){if(!force&&ALL&&Date.now()-ALL.at<120000)return ALL;const d=await api('/api/portal/students');ALL={...d,at:Date.now()};return ALL}
+function matchStudents(items,q){q=(q||'').trim().toLowerCase();if(!q)return items;const cls=q.replace(/^class\s*/,'');
+  return items.filter(x=>/^\d{1,2}$/.test(cls)?String(x.class)===cls:(x.name.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)||(x.phone||'').includes(q)||(x.parent||'').toLowerCase().includes(q)||(x.area||'').toLowerCase().includes(q)))}
+function searchBox(id,ph){return `<div class="search"><input id="${id}" type="search" placeholder="${esc(ph)}" autocomplete="off" enterkeyhint="search"><button type="button" aria-label="Search" data-sbtn="${id}">🔍</button></div>`}
 function shrinkImage(file){return new Promise((ok,bad)=>{const img=new Image(),u=URL.createObjectURL(file);img.onload=()=>{const m=1600,k=Math.min(1,m/Math.max(img.width,img.height));
   const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(u);ok(c.toDataURL('image/jpeg',.8))};
   img.onerror=()=>bad(new Error('Could not read the photo'));img.src=u})}
@@ -575,9 +585,9 @@ async fees(v){
     f.flagged.filter(x=>!q||x.name.toLowerCase().includes(q)||String(x.class)===q).map(x=>`<tr><td>${esc(x.name)}<div class="muted">${esc(x.parent)}</div></td><td class="n">${x.class}</td><td class="n">${rs(x.balance)}</td><td class="n">${x.pct}%</td><td>${esc(x.last_reminder||'never')}</td>${canEnter?`<td><button class="btn btn-line btn-sm" data-pay="${esc(x.id)}" data-nm="${esc(x.name)}" data-bal="${x.balance}">Enter payment</button></td>`:''}</tr>`).join('');
   draw('');$('fq').oninput=e=>draw(e.target.value.trim().toLowerCase());
   $('ft').onclick=e=>{const b=e.target.closest('[data-pay]');if(!b)return;choose(b.dataset.pay,b.dataset.nm,b.dataset.bal);$('pq').scrollIntoView({behavior:'smooth'})};
-  if(canEnter){let t;$('pq').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{const q=e.target.value.trim();if(q.length<2){$('pres').innerHTML='';return}
-      const r=await api('/api/portal/search?q='+encodeURIComponent(q));
-      $('pres').innerHTML=r.results.slice(0,6).map(x=>`<div class="res" data-id="${esc(x.id)}" data-nm="${esc(x.name)}" data-bal="${x.balance}"><span>${esc(x.name)} · Class ${x.class}</span><span class="muted">${rs(x.balance)} pending</span></div>`).join('')||'<p class="muted">No match</p>'},250)};
+  if(canEnter){$('pq').oninput=async e=>{const q=e.target.value.trim();if(q.length<2){$('pres').innerHTML='';return}
+      const r=matchStudents((await allStudents()).items,q);
+      $('pres').innerHTML=r.slice(0,6).map(x=>`<div class="res" data-id="${esc(x.id)}" data-nm="${esc(x.name)}" data-bal="${x.balance}"><span>${esc(x.name)} · Class ${x.class}</span><span class="muted">${rs(x.balance)} pending</span></div>`).join('')||'<p class="muted">No match</p>'};
     $('pres').onclick=e=>{const r=e.target.closest('.res');if(r)choose(r.dataset.id,r.dataset.nm,r.dataset.bal)};
     $('psave').onclick=async()=>{if(!pick)return toast('Choose a student first');const amt=Number(String($('pamt').value).replace(/\D/g,''));if(!amt)return toast('Enter the amount');
       $('psave').disabled=true;try{const r=await post('/api/portal/fees/payment',{student:pick,amount:amt,mode:$('pmode').value,ref:$('pref').value});
@@ -589,29 +599,31 @@ async fees(v){
     $('remRes').innerHTML=`<div class="banner ok" style="margin-top:10px">${r.count} reminder(s) due today.${r.count?' Queued ones are in the WhatsApp tab.':' Everyone due was reminded in the last 3 weeks.'}</div>`}catch(e){toast(e.message)}$('remind').disabled=false};
 },
 async db(v){
-  let cls=Number(ls.get('spv-dbcls')||0),q='';
-  const load=async()=>{const d=await api(`/api/portal/students?cls=${cls}&q=${encodeURIComponent(q)}`);
-    $('dbl').innerHTML=`<p class="muted" style="margin-bottom:6px">${d.items.length} student(s)</p>`+d.items.map(x=>`<div class="res" data-id="${esc(x.id)}"><div><b>${x.sno?x.sno+'. ':''}${esc(x.name)}</b> <span class="muted">· Class ${x.class}-${esc(x.section||'A')} · ${esc(x.id)}</span>
-      <div class="muted">${esc(x.parent||'')} · ${esc(x.phone||'')}${x.area?' · 📍 '+esc(x.area):''}</div></div>
-      <span class="chip ${x.route&&x.route!=='Own'?'mute':'good'}">${x.route&&x.route!=='Own'?esc(x.stop_name||((d.routes.find(r=>r.id===x.route)||{}).name||x.route).split('·')[0].trim()):'Own transport'}</span></div>`).join('')||'<p class="muted">No students found.</p>';
-    S.db=d};
+  let cls=Number(ls.get('spv-dbcls')||0);
   v.innerHTML=`<h2 class="h">Student database</h2>
     <p class="muted" style="margin-bottom:10px">${APPROVERS.includes(S.role)?'You can add, edit and remove students. Every change is logged.':'You can add and edit student details. Fee amounts and removing a student need the principal. Every change is logged.'}</p>
     <div class="inline" style="margin-bottom:10px"><select id="dbc" class="btn-line" style="padding:8px 12px;border-radius:999px"><option value="0">All classes</option>${[1,2,3,4,5,6,7,8,9,10].map(c=>`<option value="${c}" ${c===cls?'selected':''}>Class ${c}</option>`).join('')}</select>
       <button class="btn btn-gold btn-sm" id="dbadd">+ Add student</button></div>
-    <div class="f" style="margin-bottom:10px"><input id="dbq" placeholder="Search name, admission no, parent, phone or area…"></div><div class="card" id="dbl"><p class="muted">Loading…</p></div>`;
-  $('dbc').onchange=e=>{cls=Number(e.target.value);ls.set('spv-dbcls',cls);load()};
-  let t;$('dbq').oninput=e=>{clearTimeout(t);t=setTimeout(()=>{q=e.target.value.trim();load()},250)};
-  $('dbl').onclick=e=>{const r=e.target.closest('.res');if(r)studentForm(S.db.items.find(x=>x.id===r.dataset.id))};
-  $('dbadd').onclick=()=>studentForm(null);
-  await load();
+    <div style="margin-bottom:10px">${searchBox('dbq','Search name, admission no, parent, phone or area…')}</div><div class="card" id="dbl"><p class="muted">Loading…</p></div>`;
+  const d=await allStudents(true);S.db=d;
+  const rname=id=>((d.routes.find(r=>r.id===id)||{}).name||id||'').split('·')[0].trim();
+  const draw=()=>{const items=matchStudents(d.items.filter(x=>!cls||Number(x.class)===cls),$('dbq').value);
+    $('dbl').innerHTML=`<p class="muted" style="margin-bottom:6px">${items.length} student(s)</p>`+items.slice(0,200).map(x=>`<div class="res" data-id="${esc(x.id)}"><div><b>${x.sno?x.sno+'. ':''}${esc(x.name)}</b> <span class="muted">· Class ${x.class}-${esc(x.section||'A')} · ${esc(x.id)}</span>
+      <div class="muted">${esc(x.parent||'')} · ${esc(x.phone||'')}${x.area?' · 📍 '+esc(x.area):''}</div></div>
+      <span class="chip ${x.route&&x.route!=='Own'?'mute':'good'}">${x.route&&x.route!=='Own'?esc(x.stop_name||rname(x.route)):'Own transport'}</span></div>`).join('')+(items.length>200?'<p class="muted">Showing first 200. Choose a class or search to narrow.</p>':'')||'<p class="muted">No students found.</p>'};
+  $('dbc').onchange=e=>{cls=Number(e.target.value);ls.set('spv-dbcls',cls);draw()};
+  $('dbq').oninput=draw;v.querySelector('[data-sbtn]').onclick=()=>{draw();$('dbq').focus()};
+  $('dbl').onclick=e=>{const r=e.target.closest('.res');if(r)studentForm(d.items.find(x=>x.id===r.dataset.id))};
+  $('dbadd').onclick=()=>studentForm(null);draw();
 },
 async search(v){
-  v.innerHTML=`<h2 class="h">Search students</h2><div class="f"><input id="sq" placeholder="Name, admission no, parent, phone or class (e.g. 6)…" autofocus></div><div class="card" id="sr" style="margin-top:10px"><p class="muted">Type at least 2 letters.</p></div>`;
-  let t;$('sq').oninput=e=>{clearTimeout(t);t=setTimeout(async()=>{const q=e.target.value.trim();if(q.length<1)return;
-    const r=await api('/api/portal/search?q='+encodeURIComponent(q));
-    $('sr').innerHTML=r.results.map(s=>`<div class="res" data-id="${esc(s.id)}"><div><b>${esc(s.name)}</b><div class="muted">Class ${s.class} · ${esc(s.id)} · ${esc(s.parent)} ${esc(s.phone)}</div></div>${s.fee_flag===undefined?'':s.fee_flag?'<span class="chip warn">fee pending</span>':'<span class="chip good">fees ok</span>'}</div>`).join('')||'<p class="muted">No students found.</p>'},250)};
-  $('sr').onclick=e=>{const r=e.target.closest('.res');if(r)studentDetail(r.dataset.id)};
+  v.innerHTML=`<h2 class="h">Search students</h2>${searchBox('sq','Name, admission no, parent, phone, area or class (e.g. 6)…')}<div class="card" id="sr" style="margin-top:10px"><p class="muted">Loading students…</p></div>`;
+  const d=await allStudents();
+  const draw=()=>{const q=$('sq').value.trim();if(!q){$('sr').innerHTML=`<p class="muted">${d.items.length} students. Type a name, number or class.</p>`;return}
+    const r=matchStudents(d.items,q);
+    $('sr').innerHTML=`<p class="muted" style="margin-bottom:4px">${r.length} found</p>`+r.slice(0,60).map(s=>`<div class="res" data-id="${esc(s.id)}"><div><b>${esc(s.name)}</b><div class="muted">Class ${s.class}-${esc(s.section||'A')} · ${esc(s.id)} · ${esc(s.parent)} ${esc(s.phone)}${s.area?' · '+esc(s.area):''}</div></div>${s.fee_flag===undefined?'':s.fee_flag?'<span class="chip warn">fee pending</span>':'<span class="chip good">fees ok</span>'}</div>`).join('')||'<p class="muted">No students found.</p>'};
+  $('sq').oninput=draw;$('sq').onkeydown=e=>{if(e.key==='Enter')draw()};v.querySelector('[data-sbtn]').onclick=()=>{draw();$('sq').focus()};
+  $('sr').onclick=e=>{const r=e.target.closest('.res');if(r)studentDetail(r.dataset.id)};draw();$('sq').focus();
 },
 async circulars(v){
   const d=await api('/api/portal/circulars'),can=S.role!=='teacher';
@@ -673,6 +685,8 @@ async routes(v){
   const draw=async()=>{const d=await api('/api/portal/routes');if(S.tab!=='routes'&&S.tab!=='van')return;last=d.routes;
     const pts=[];if(layer)layer.clearLayers();
     const real=d.routes.filter(r=>!String(r.id).startsWith('dev-'));
+    const busy=$('rl').querySelector('details[open]')||($('rl').contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName));
+    if(busy){paintStops();return}
     $('rl').innerHTML=(d.routes.length?'':'<p class="muted">No bus route is linked to your child.</p>')+d.routes.map(r=>{const p=r.position,dev=String(r.id).startsWith('dev-');
       if(p&&layer){if(p.trail&&p.trail.length>1)L.polyline(p.trail.map(t=>[t[0],t[1]]),{color:'#E3A21A',weight:4}).addTo(layer);
         L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div class="pin">🚐 ${esc(r.name.split('·')[0])}</div>`,iconAnchor:[30,12]})}).addTo(layer);pts.push([p.lat,p.lon])}
@@ -697,7 +711,7 @@ async routes(v){
     if(map&&!fitted){const all=pts.concat(...last.map(r=>(r.stops||[]).filter(x=>x.lat!=null).map(x=>[x.lat,x.lon])));if(all.length){map.fitBounds(all,{maxZoom:15,padding:[40,40]});fitted=true}}
   };
   $('rl').onclick=async e=>{const s=e.target.closest('[data-save]'),l=e.target.closest('[data-dolink]'),st=e.target.closest('[data-stops]');
-    try{if(s){const b={};v.querySelectorAll(`[data-r="${s.dataset.save}"]`).forEach(i=>b[i.dataset.k]=i.value);await post('/api/portal/routes/'+s.dataset.save,b);toast('Route saved');draw()}
+    try{if(s){const b={};v.querySelectorAll(`[data-r="${s.dataset.save}"]`).forEach(i=>b[i.dataset.k]=i.value);s.disabled=true;try{await post('/api/portal/routes/'+s.dataset.save,b);s.closest('details').open=false;toast('Saved: GPS phone & driver');draw()}finally{s.disabled=false}}
       if(l){const rid=v.querySelector(`[data-link="${l.dataset.dolink}"]`).value;await post('/api/portal/routes/'+rid,{device_id:l.dataset.dolink});toast('Phone linked');draw()}
       if(st){const r=last.find(x=>x.id===st.dataset.stops);ed={rid:r.id,name:r.name,stops:(r.stops||[]).map(x=>({...x})),active:null};drawEd();$('stopEd').scrollIntoView({behavior:'smooth'})}}catch(err){toast(err.message)}};
   await draw();S.timer=setInterval(()=>{if(!document.hidden)draw().catch(()=>{})},10000);
@@ -833,9 +847,9 @@ function studentForm(x){const v=$('view'),d=S.db,isNew=!x;x=x||{class:Number(ls.
     if(isNew)b.id=$('sf_id').value.trim();
     $('sf_save').disabled=true;
     try{isNew?await post('/api/portal/students',b):await api('/api/portal/students/'+encodeURIComponent(x.id),{method:'PUT',body:JSON.stringify(b)});
-      toast(isNew?'Student added':'Saved');show('db');return}catch(e){toast(e.message)}$('sf_save').disabled=false};
+      toast(isNew?'Student added':'Saved');ALL=null;show('db');return}catch(e){toast(e.message)}$('sf_save').disabled=false};
   if($('sf_del'))$('sf_del').onclick=async()=>{if(!confirm(`Remove ${x.name} from the school records?`))return;
-    try{await api('/api/portal/students/'+encodeURIComponent(x.id),{method:'DELETE'});toast('Removed');show('db')}catch(e){toast(e.message)}};
+    try{await api('/api/portal/students/'+encodeURIComponent(x.id),{method:'DELETE'});toast('Removed');ALL=null;show('db')}catch(e){toast(e.message)}};
 }
 async function studentDetail(id){
   const v=$('view'),s=await api('/api/portal/student/'+encodeURIComponent(id)),a=s.attendance;

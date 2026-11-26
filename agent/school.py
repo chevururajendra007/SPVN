@@ -489,12 +489,17 @@ def routes() -> list[dict]:
     return rs
 
 
+_STOP_IDX = [0.0, {}]  # (time, {(route, stop): name}) - a list of 500 students must not read routes 500 times
+
+
 def stop_name(route_id, stop_id) -> str:
     if not route_id or not stop_id or route_id == "Own":
         return ""
-    r = next((x for x in routes() if x["id"] == route_id), None)
-    st = next((x for x in (r or {}).get("stops", []) if x["id"] == stop_id), None)
-    return st["name"] if st else ""
+    import time as _t
+    if _t.time() - _STOP_IDX[0] > 5:
+        _STOP_IDX[1] = {(r["id"], x["id"]): x["name"] for r in routes() for x in r.get("stops", [])}
+        _STOP_IDX[0] = _t.time()
+    return _STOP_IDX[1].get((route_id, stop_id), "")
 
 
 def save_stops(rid, stops: list[dict], by="") -> dict:
@@ -516,6 +521,7 @@ def save_stops(rid, stops: list[dict], by="") -> dict:
             x["id"] = f"s{n}"
         used.add(x["id"])
     r["stops"] = clean
+    _STOP_IDX[0] = 0.0
     store.set("routes", rs)
     return r
 

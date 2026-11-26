@@ -134,17 +134,26 @@ def _pg_conn():
     return _pg
 
 
+_pg_lock = threading.RLock()  # one connection per instance; requests run in parallel threads
+
+
 def _pg_run(sql, **params):
     global _pg
-    for attempt in (1, 2):  # reconnect once if Neon closed an idle connection
-        try:
-            return _pg_conn().run(sql, **params)
-        except StorageError:
-            raise
-        except Exception:
-            _pg = None
-            if attempt == 2:
+    with _pg_lock:
+        for attempt in (1, 2):  # reconnect once if Neon closed an idle connection
+            try:
+                return _pg_conn().run(sql, **params)
+            except StorageError:
                 raise
+            except Exception:
+                try:
+                    if _pg is not None:
+                        _pg.close()
+                except Exception:
+                    pass
+                _pg = None
+                if attempt == 2:
+                    raise
 
 
 def tls_status() -> dict:
@@ -194,20 +203,68 @@ def _raw_set_many(items: dict):
             _fsave(d)
 
 
+# ---------------------------------------------------------------- per-request read cache
+# One page can read the same document (e.g. the student list) many times. Inside one request we read
+# and decrypt it once; writes update the cache. Copies are returned so callers can't change the cache.
+import contextvars
+import copy
+
+_REQ_CACHE: contextvars.ContextVar = contextvars.ContextVar("spv_req_cache", default=None)
+_MISS = object()
+
+
+def begin_request():
+    """Start a fresh read cache for this request (called by the web middleware)."""
+    return _REQ_CACHE.set({})
+
+
+def end_request(token):
+    _REQ_CACHE.reset(token)
+
+
+def _cache_get(key):
+    c = _REQ_CACHE.get()
+    if c is None or key not in c:
+        return _MISS
+    return copy.deepcopy(c[key])
+
+
+def _cache_put(key, val):
+    c = _REQ_CACHE.get()
+    if c is not None:
+        c[key] = copy.deepcopy(val)
+
+
 # ---------------------------------------------------------------- public API
 def get(key: str, default=None):
+    hit = _cache_get(key)
+    if hit is not _MISS:
+        return default if hit is None else hit
     ensure_ready()
     k = PREFIX + key
     raw = _raw_get(k)
     val = None if raw is None else _unwrap(_open(k, raw))
+    _cache_put(key, val)
     return default if val is None else val
 
 
 def get_many(keys: list[str]) -> dict:
     """Fetch many keys in one round trip. Returns {key: value} for keys that exist."""
-    ensure_ready()
     if not keys:
         return {}
+    out = {}
+    if _REQ_CACHE.get() is not None:
+        missing = []
+        for k in keys:
+            hit = _cache_get(k)
+            if hit is _MISS:
+                missing.append(k)
+            elif hit is not None:
+                out[k] = hit
+        keys = missing
+        if not keys:
+            return out
+    ensure_ready()
     full = [PREFIX + k for k in keys]
     if backend() == "postgres":
         rows = dict(_pg_run("SELECT k, v FROM spv_kv WHERE k = ANY(:ks)", ks=full))
@@ -215,12 +272,14 @@ def get_many(keys: list[str]) -> dict:
         with _lock:
             d = _fload()
         rows = {k: d[k] for k in full if k in d}
-    out = {}
+    got = {}
     for k, raw in rows.items():
         val = _unwrap(_open(k, raw))
         if val is not None:
-            out[k[len(PREFIX):]] = val
-    return out
+            got[k[len(PREFIX):]] = val
+    for k in keys:
+        _cache_put(k, got.get(k))
+    return out | got
 
 
 def set(key: str, value, ttl: int | None = None):  # noqa: A001 - mirrors Redis naming
@@ -228,6 +287,7 @@ def set(key: str, value, ttl: int | None = None):  # noqa: A001 - mirrors Redis 
     k = PREFIX + key
     val = {"__exp": time.time() + ttl, "v": value} if ttl else value
     _raw_set_many({k: _seal(k, val)})
+    _cache_put(key, value)
 
 
 def set_many(items: dict):
@@ -235,9 +295,12 @@ def set_many(items: dict):
     ensure_ready()
     if items:
         _raw_set_many({PREFIX + k: _seal(PREFIX + k, v) for k, v in items.items()})
+        for k, v in items.items():
+            _cache_put(k, v)
 
 
 def delete(key: str):
+    _cache_put(key, None)
     ensure_ready()
     k = PREFIX + key
     if backend() == "postgres":
