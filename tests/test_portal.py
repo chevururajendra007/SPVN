@@ -598,3 +598,18 @@ def test_van_place_name_and_nearest_stop(client, monkeypatch):
     st = van.nearest_stop({"lat": 14.0391, "lon": 79.9712},
                           [{"name": "Far", "lat": 14.20, "lon": 79.90}, {"name": "NCR Nagar", "lat": 14.0400, "lon": 79.9712}])
     assert st["name"] == "NCR Nagar" and 50 < st["m"] < 150
+
+
+def test_van_states_and_rough_fix_skipped():
+    import time as _t
+    import van
+    now = _t.time()
+    assert van._state({"ts": now - 20, "kmh": 25}, now)[0] == "moving"
+    assert van._state({"ts": now - 20, "kmh": 0}, now)[0] == "stopped"
+    assert van._state({"ts": now - 600, "kmh": 0}, now)[0] == "idle"        # parked / phone idle, not "offline"
+    assert van._state({"ts": now - 3600, "kmh": 0}, now)[0] == "offline"
+    van.save_point({"id": "acc-test", "lat": 14.04, "lon": 79.98, "ts": now - 30, "kmh": 10, "acc": 8})
+    assert van.save_point({"id": "acc-test", "lat": 14.09, "lon": 79.90, "ts": now, "kmh": None, "acc": 900}).startswith("rough")
+    assert van.save_point({"id": "acc-test", "lat": 14.0410, "lon": 79.98, "ts": now, "kmh": None, "acc": 10}) == "ok"
+    import store
+    assert store.get("van:latest")["acc-test"]["kmh"] > 5   # speed worked out from the two points

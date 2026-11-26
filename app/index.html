@@ -553,7 +553,7 @@ async dash(v){
     ${loose.length?`<div class="banner warn">${loose.length} GPS phone(s) are sending but not linked to a route. Open <b>Bus routes</b> and tap <b>Link this phone</b>.</div>`:''}
     <div class="fleet">${(d.fleet||[]).map(x=>{const p=x.position;return `<div class="van ${x.live?'live':''}"><b><span class="dot ${x.live?'live':''}"></span>${esc(x.name)}</b>
       ${p&&p.place?`<div style="margin-top:4px;font-weight:600">📍 ${esc(p.place)}</div>`:''}
-      <div class="muted" style="margin-top:4px">${p?(x.live?((p.kmh||0)>3?`Moving · ${Math.round(p.kmh)} km/h`:'Stopped'):'Offline')+' · '+ago(p.age_s)+(p.battery!=null?' · 🔋'+p.battery+'%':''):'No GPS yet'}</div>
+      <div class="muted" style="margin-top:4px">${p?esc(p.state_text)+(p.battery!=null?' · 🔋'+p.battery+'%':''):'No GPS yet'}</div>
       <div class="muted">${String(x.id).startsWith('dev-')?'<span class="chip warn">not linked</span>':`${x.students} students · ${(x.stops||[]).length} stops`}</div></div>`}).join('')||'<p class="muted">No routes yet.</p>'}</div>
     <button class="btn btn-line btn-sm" style="margin-top:10px" onclick="show('routes')">Open live map & bus stops</button>`;
 },
@@ -657,7 +657,7 @@ async routes(v){
   await loadLeaflet();let stopLayer=null;
   if(window.L){map=L.map('map').setView([14.0436,79.9806],13);layer=L.layerGroup().addTo(map);stopLayer=L.layerGroup().addTo(map);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map)}else $('map').classList.add('hidden');
-  let fitted=false,last=[],ed=null;
+  let fitted=false,last=[],ed=null,follow=null;
   const paintStops=()=>{if(!stopLayer)return;stopLayer.clearLayers();
     last.forEach(r=>{const list=ed&&ed.rid===r.id?ed.stops:(r.stops||[]);const my=(mine[r.id]||[]).map(m=>m.stop.id);
       list.forEach((st,i)=>{if(st.lat==null)return;const own=my.includes(st.id),act=ed&&ed.rid===r.id&&ed.active===i;
@@ -690,17 +690,17 @@ async routes(v){
     if(busy){paintStops();return}
     $('rl').innerHTML=(d.routes.length?'':'<p class="muted">No bus route is linked to your child.</p>')+d.routes.map(r=>{const p=r.position,dev=String(r.id).startsWith('dev-');
       if(p&&layer){if(p.trail&&p.trail.length>1)L.polyline(p.trail.map(t=>[t[0],t[1]]),{color:'#E3A21A',weight:4}).addTo(layer);
-        L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div class="pin" style="${r.live?'':'background:#6B7393;border-color:#C5CCE2'}">🚐 ${esc(r.name.split('·')[0])}${r.live?'':' · last seen'}</div>`,iconAnchor:[30,12]})}).bindPopup(`<b>${esc(r.name)}</b><br>${esc(p.place||'')}`).addTo(layer);pts.push([p.lat,p.lon])}
-      const st=p?(r.live?((p.kmh||0)>3?`Moving · ${Math.round(p.kmh)} km/h`:'Stopped'):'Offline')+` · ${ago(p.age_s)}${p.battery!=null?' · 🔋'+p.battery+'%':''}`:'No GPS yet';
+        L.marker([p.lat,p.lon],{icon:L.divIcon({className:'',html:`<div class="pin" style="${p.state==='moving'||p.state==='stopped'?'':'background:#6B7393;border-color:#C5CCE2'}">🚐 ${esc(r.name.split('·')[0])}${p.state==='offline'?' · last seen':''}</div>`,iconAnchor:[30,12]})}).bindPopup(`<b>${esc(r.name)}</b><br>${esc(p.place||'')}`).addTo(layer);pts.push([p.lat,p.lon])}
+      const st=p?esc(p.state_text)+(p.battery!=null?' · 🔋'+p.battery+'%':''):'No GPS yet';
       const etas=(mine[r.id]||[]).map(m=>{const e=p&&m.stop.lat!=null?(k=>({km:Math.round(k*10)/10,minutes:Math.max(1,Math.round(k/20*60)),near:k<.4}))(haversineKm(p,m.stop)):null;
         return `<div class="eta"><span style="font-size:1.5rem">📍</span><div><small class="muted">${esc(m.name)}</small><br>${etaText(e,m.stop,r.live)}</div></div>`}).join('');
-      return `<div class="card"><div class="inline" style="justify-content:space-between"><b style="color:var(--navy);font-family:var(--head);font-size:1.1rem"><span class="dot ${r.live?'live':''}"></span>${esc(r.name)}</b>${r.students!=null?`<span class="chip mute">${r.students} students</span>`:''}</div>
+      return `<div class="card"><div class="inline" style="justify-content:space-between"><b style="color:var(--navy);font-family:var(--head);font-size:1.1rem"><span class="dot ${p&&(p.state==='moving'||p.state==='stopped')?'live':''}"></span>${esc(r.name)}</b>${r.students!=null?`<span class="chip mute">${r.students} students</span>`:''}</div>
         ${p?`<p style="margin-top:6px;font-size:1rem"><b>📍 ${p.place?esc(p.place):'Finding the place name…'}</b>${p.near_stop?`<br><span class="muted">${p.near_stop.m<150?'At':p.near_stop.m+' m from'} ${esc(p.near_stop.name)} stop</span>`:''}</p>`:''}
         <p class="muted" style="margin-top:4px">${st}${canEdit&&!dev?` · GPS phone: ${r.device_id?'<b>'+esc(r.device_id)+'</b>':'<b style="color:var(--bad)">not set</b>'}`:''}</p>
         ${r.stops&&r.stops.length?`<p class="muted">${r.stops.map(x=>esc(x.name)+(x.lat==null&&canStops?' <small style="color:var(--warn)">(not on map)</small>':'')).join(' → ')}</p>`:''}
         ${etas}
         ${r.driver?`<p class="muted">Driver: ${esc(r.driver)} ${r.driver_phone?`· <a href="tel:${esc(r.driver_phone)}">${esc(r.driver_phone)}</a>`:''}</p>`:''}
-        <div class="inline" style="margin-top:8px">${p&&map?`<button class="btn btn-navy btn-sm" data-focus="${p.lat},${p.lon}">📍 Show on map</button>`:''}${p?`<a class="btn btn-line btn-sm" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lon}">Open in Google Maps</a>`:''}
+        <div class="inline" style="margin-top:8px">${p&&map?`<button class="btn btn-navy btn-sm" data-focus="${p.lat},${p.lon}" data-rid="${esc(r.id)}">📍 Show on map</button>`:''}${p?`<a class="btn btn-line btn-sm" target="_blank" rel="noopener" href="https://www.google.com/maps?q=${p.lat},${p.lon}">Open in Google Maps</a>`:''}
           ${canStops&&!dev?`<button class="btn btn-gold btn-sm" data-stops="${esc(r.id)}">✏️ Edit bus stops (${(r.stops||[]).length})</button>`:''}</div>
         ${canEdit&&!dev?`<details style="margin-top:8px"><summary class="muted">Set GPS phone & driver</summary><div class="f" style="margin-top:8px">
           <input data-r="${esc(r.id)}" data-k="device_id" placeholder="Traccar device identifier" value="${esc(r.device_id||'')}">
@@ -708,12 +708,13 @@ async routes(v){
           <input data-r="${esc(r.id)}" data-k="driver_phone" placeholder="Driver mobile" value="${esc(r.driver_phone||'')}">
           <button class="btn btn-navy btn-sm" data-save="${esc(r.id)}">Save</button></div></details>`:''}
         ${canEdit&&dev?`<p class="muted" style="margin-top:6px">Device identifier <b>${esc(r.device_id)}</b> is sending GPS. Choose its route:</p><div class="inline" style="margin-top:6px"><select data-link="${esc(r.device_id)}" class="btn-line" style="padding:7px 10px;border-radius:999px">${real.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}${x.device_id?' (replace '+esc(x.device_id)+')':''}</option>`).join('')}</select><button class="btn btn-navy btn-sm" data-dolink="${esc(r.device_id)}">Link this phone</button></div>`:''}
-      </div>`}).join('')+(canEdit?`<h3 class="h">GPS phones heard in the last 24 hours</h3><div class="card">${(d.attempts||[]).map(a=>`<div class="res" style="cursor:default"><span><b>${esc(a.id)}</b><br><small class="muted">${esc(a.reason)} · ${ago(a.age_s)}</small></span><span class="chip ${a.ok?'good':'bad'}">${a.ok?'reaching':'rejected'}</span></div>`).join('')||'<p class="muted">No phone has reached the portal yet. Check the server URL in Traccar Client, switch the service on, and allow location "all the time".</p>'}</div>`:'')+(canEdit?`<p class="muted">Van phones: install <b>Traccar Client</b>, set the server URL to <code>https://spvn.vercel.app/api/van/loc/&lt;VAN_KEY&gt;</code>, frequency 15 s, and switch the service on. A new phone first appears here as "Unassigned phone"; link it to its route.</p>`:'');
+      </div>`}).join('')+(canEdit?`<h3 class="h">GPS phones heard in the last 24 hours</h3><div class="card">${(d.attempts||[]).map(a=>`<div class="res" style="cursor:default"><span><b>${esc(a.id)}</b><br><small class="muted">${esc(a.reason)} · ${ago(a.age_s)}</small></span><span class="chip ${a.ok?'good':'bad'}">${a.ok?'reaching':'rejected'}</span></div>`).join('')||'<p class="muted">No phone has reached the portal yet. Check the server URL in Traccar Client, switch the service on, and allow location "all the time".</p>'}</div>`:'')+(canEdit?`<p class="muted">Van phones: install <b>Traccar Client</b>, set the server URL to <code>https://spvn.vercel.app/api/van/loc/&lt;VAN_KEY&gt;</code>, Location accuracy <b>High</b>, Frequency <b>15</b>, Distance <b>0</b>, Heartbeat <b>60</b>, Offline buffering <b>on</b>, and switch the service on. In Android settings set Traccar Client's battery use to <b>Unrestricted</b> and location to <b>Allow all the time · Precise</b>, or Android stops it after a few minutes. Keep the phone on the charger in the van. A new phone first appears here as "Unassigned phone"; link it to its route.</p>`:'');
     paintStops();
+    if(map&&follow){const fr=d.routes.find(x=>x.id===follow);if(fr&&fr.position)map.panTo([fr.position.lat,fr.position.lon])}
     if(map&&!fitted){const all=pts.concat(...last.map(r=>(r.stops||[]).filter(x=>x.lat!=null).map(x=>[x.lat,x.lon])));if(all.length){map.fitBounds(all,{maxZoom:15,padding:[40,40]});fitted=true}}
   };
   $('rl').addEventListener('click',e=>{const f=e.target.closest('[data-focus]');if(!f||!map)return;const [la,lo]=f.dataset.focus.split(',').map(Number);
-    map.setView([la,lo],16);$('map').scrollIntoView({behavior:'smooth',block:'start'})});
+    follow=f.dataset.rid;map.setView([la,lo],16);toast('Following this van on the map');$('map').scrollIntoView({behavior:'smooth',block:'start'})});
   $('rl').onclick=async e=>{const s=e.target.closest('[data-save]'),l=e.target.closest('[data-dolink]'),st=e.target.closest('[data-stops]');
     try{if(s){const b={};v.querySelectorAll(`[data-r="${s.dataset.save}"]`).forEach(i=>b[i.dataset.k]=i.value);s.disabled=true;try{await post('/api/portal/routes/'+s.dataset.save,b);s.closest('details').open=false;toast('Saved: GPS phone & driver');draw()}finally{s.disabled=false}}
       if(l){const rid=v.querySelector(`[data-link="${l.dataset.dolink}"]`).value;await post('/api/portal/routes/'+rid,{device_id:l.dataset.dolink});toast('Phone linked');draw()}

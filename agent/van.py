@@ -22,7 +22,9 @@ import store
 
 router = APIRouter(prefix="/api/van")
 TRAIL = 120            # points of route history kept per van
-STALE_AFTER = 10 * 60  # seconds: older than this = offline
+FRESH = 3 * 60         # updated within 3 min: shown as moving / stopped right now
+STALE_AFTER = 30 * 60  # 3-30 min: van parked or phone idle; older: offline
+BAD_ACCURACY = 200     # metres: a rough network fix must not replace a good recent GPS fix
 
 
 # ---------------------------------------------------------------- parsing (old and new Traccar Client formats)
@@ -69,7 +71,8 @@ def parse(fields: dict, body: dict | None) -> dict:
     return {"id": school.devkey(dev), "lat": round(lat, 6), "lon": round(lon, 6),
             "ts": _ts(f.get("timestamp") or loc.get("timestamp")), "kmh": kmh,
             "heading": _num(f.get("bearing") or coords.get("heading")),
-            "battery": None if batt is None else round(batt), "received": time.time()}
+            "battery": None if batt is None else round(batt), "received": time.time(),
+            "acc": _num(f.get("accuracy") or coords.get("accuracy"))}
 
 
 OLD_POINT = 6 * 3600  # Traccar Client uploads its offline backlog (oldest first); skip points older than this
@@ -87,6 +90,13 @@ def save_point(p: dict) -> str:
     cur = latest.get(p["id"])
     if cur and cur.get("ts", 0) > p["ts"]:
         return "older than the last position - skipped"
+    if cur and (p.get("acc") or 0) > BAD_ACCURACY and (cur.get("acc") or 0) <= BAD_ACCURACY \
+            and p["ts"] - cur["ts"] < 120:
+        return "rough location (low accuracy) - skipped"
+    if p.get("kmh") is None and cur:  # some phones send no speed: work it out from the last point
+        dt = p["ts"] - cur["ts"]
+        if 0 < dt < 600:
+            p["kmh"] = round(_km(cur, p) / (dt / 3600), 1)
     latest[p["id"]] = p
     store.set("van:latest", latest)
     trail = [t for t in (store.get(f"van:trail:{p['id']}", []) or []) if now - t[2] < OLD_POINT]
@@ -187,12 +197,24 @@ def _live(p, now):
     return bool(p) and now - p["ts"] < STALE_AFTER
 
 
+def _state(p, now) -> tuple[str, str]:
+    age = now - p["ts"]
+    mins = int(age // 60)
+    when = "just now" if mins < 1 else f"{mins} min ago"
+    if age < FRESH:
+        return ("moving", f"Moving · {round(p['kmh'])} km/h") if (p.get("kmh") or 0) > 3 else ("stopped", "Stopped")
+    if age < STALE_AFTER:
+        return "idle", f"Parked or phone idle · last update {when}"
+    return "offline", f"Offline · phone not sending since {when}" if mins < 600 else "Offline · phone not sending"
+
+
 def _pos(p, now, dev):
     if not p:
         return None
     trail = store.get(f"van:trail:{dev}", []) or []
+    state, text = _state(p, now)
     return {"lat": p["lat"], "lon": p["lon"], "kmh": p.get("kmh"), "battery": p.get("battery"),
-            "age_s": int(now - p["ts"]), "trail": trail[:60]}
+            "age_s": int(now - p["ts"]), "trail": trail[:60], "state": state, "state_text": text}
 
 
 def eta_to_stop(position: dict | None, stop: dict | None, live: bool) -> dict | None:
@@ -214,10 +236,8 @@ def status_text(items: list[dict]) -> str:
         if not p:
             out.append(f"{v['name']}: no GPS yet (van phone not set up or switched off).")
             continue
-        mins = p["age_s"] // 60
-        when = "just now" if mins < 1 else f"{mins} min ago"
-        state = ("offline (GPS not sending)" if not v["live"] else
-                 f"moving at {p['kmh']:.0f} km/h" if (p.get("kmh") or 0) > 3 else "stopped")
+        state = p.get("state_text", "")
+        when = "just now" if p["age_s"] < 60 else f"{p['age_s'] // 60} min ago"
         where = f" near {p['place']}" if p.get("place") else ""
         stop = f" ({p['near_stop']['m']} m from {p['near_stop']['name']} stop)" if p.get("near_stop") else ""
         out.append(f"{v['name']}: {state}{where}{stop}, last update {when}. "
@@ -282,6 +302,9 @@ async def receive(key: str, request: Request):
     if p["id"] not in known and p["id"] not in latest and sum(d not in known for d in latest) >= MAX_UNASSIGNED:
         note_attempt(p["id"], False, "too many unlinked phones - link or remove some")
         raise HTTPException(403, "too many unassigned devices")
+    if not store.get(f"van:fields:{p['id']}"):
+        store.set(f"van:fields:{p['id']}", 1, ttl=3600)
+        print(f"[van] {p['id']} sends: {sorted(set(fields) | set((body or {}).keys()))} acc={p.get('acc')}")
     res = save_point(p)  # unknown phones are kept as "Unassigned phone" until linked to a route
     link = "linked" if p["id"] in known else "not linked to a route yet"
     if res == "ok":
