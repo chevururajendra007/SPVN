@@ -613,6 +613,23 @@ def test_van_place_name_and_nearest_stop(client, monkeypatch):
     n = len(calls)
     assert van.place_name(14.05002, 79.99003, "van-g").startswith("near Extra Mart")  # moved 3 m: no new lookup
     assert len(calls) == n
+    # Ola Maps (Indian street data, prepaid - no card auto-debit)
+    monkeypatch.delenv("GOOGLE_MAPS_API_KEY")
+    monkeypatch.setenv("OLA_MAPS_API_KEY", "ola-test")
+    seen = []
+
+    def ola_open(req, timeout=0):
+        seen.append(req.full_url)
+        return io.BytesIO(_j.dumps({"status": "ok", "results": [{
+            "formatted_address": "NCR Nagar 2 Main Rd, NCR Nagar, Kota, Andhra Pradesh 524411, India",
+            "types": ["route"], "address_components": [
+                {"long_name": "NCR Nagar 2 Main Rd", "types": ["route"]},
+                {"long_name": "NCR Nagar", "types": ["sublocality"]},
+                {"long_name": "Kota", "types": ["locality"]}]}]}).encode())
+    monkeypatch.setattr(urllib.request, "urlopen", ola_open)
+    assert van.place_name(14.0611, 79.9811, "van-o") == "NCR Nagar 2 Main Rd, Kota"
+    assert "api.olamaps.io" in seen[0] and "api_key=ola-test" in seen[0]
+    assert van._format_google([{"formatted_address": "Gandhi Rd, Kota, Andhra Pradesh, India"}]) == "Gandhi Rd, Kota, Andhra Pradesh"
     st = van.nearest_stop({"lat": 14.0391, "lon": 79.9712},
                           [{"name": "Far", "lat": 14.20, "lon": 79.90}, {"name": "NCR Nagar", "lat": 14.0400, "lon": 79.9712}])
     assert st["name"] == "NCR Nagar" and 50 < st["m"] < 150

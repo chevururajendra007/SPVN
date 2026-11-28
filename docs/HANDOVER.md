@@ -94,6 +94,11 @@ report cards/PDFs, push notifications, student logins, SMS OTP (WhatsApp/testing
 
 ## Van street names (exact place where the van is)
 - Without a key the portal uses free OpenStreetMap names (few street names in Kota villages).
+- Recommended: **Ola Maps** (Indian street data, 100,000 free lookups a month, prepaid - no card auto-debit):
+  1. maps.olakrutrim.com → Sign up / Log in (mobile OTP) → create a project → copy the **API key**.
+  2. Vercel → spvn → Settings → Environment Variables → `OLA_MAPS_API_KEY` (Sensitive, Production) → Redeploy.
+  3. Daily safety cap: `GEO_DAILY_MAX` (default 2,500 for Ola = ~75,000 a month, inside the free allowance).
+- Order used: Google key (if set) → Ola key (if set) → OpenStreetMap.
 - For Google-quality street names ("NCR Nagar Rd, Kota") add `GOOGLE_MAPS_API_KEY` in Vercel:
   1. console.cloud.google.com → create project "SPV School" → enable **Geocoding API**.
   2. Billing must be linked (Google asks for a card) – usage stays inside the free monthly allowance.

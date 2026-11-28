@@ -147,13 +147,18 @@ def vans(route_list: list[dict], only_routes: set | None = None) -> list[dict]:
 # stays inside Google's free monthly allowance.
 GEO_URL = "https://nominatim.openstreetmap.org/reverse"
 GOOGLE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+OLA_URL = "https://api.olamaps.io/places/v1/reverse-geocode"  # Ola Maps (India): 100k free lookups/month
 GEO_TTL = 30 * 86400
 LANDMARK_KINDS = {"amenity", "shop", "tourism", "office", "leisure", "building", "place_of_worship",
                   "school", "hospital", "bank"}
 
 
 def _provider() -> str:
-    return "google" if os.getenv("GOOGLE_MAPS_API_KEY") else "osm"
+    if os.getenv("GOOGLE_MAPS_API_KEY"):
+        return "google"
+    if os.getenv("OLA_MAPS_API_KEY"):
+        return "ola"
+    return "osm"
 
 
 def _geo_key(lat, lon):
@@ -196,6 +201,8 @@ def _format_google(results: list) -> str:
     area = comp.get("sublocality_level_2") or comp.get("sublocality_level_1") or comp.get("neighborhood")
     town = comp.get("locality") or comp.get("administrative_area_level_3")
     place = _join(road, area, town)
+    if not place and results:  # provider gave only a full address line: keep its first 3 parts
+        place = ", ".join([x.strip() for x in (results[0].get("formatted_address") or "").split(",") if x.strip()][:3])
     return f"near {landmark}, {place}" if landmark and landmark != road else place
 
 
@@ -210,6 +217,14 @@ def _lookup(lat: float, lon: float) -> str:
         if data.get("status") not in ("OK", "ZERO_RESULTS"):
             raise RuntimeError(f"google {data.get('status')}")
         return _format_google(data.get("results", []))
+    if _provider() == "ola":
+        q = urllib.parse.urlencode({"latlng": f"{lat},{lon}", "api_key": os.getenv("OLA_MAPS_API_KEY")})
+        req = urllib.request.Request(f"{OLA_URL}?{q}", headers={"X-Request-Id": f"spv-{int(time.time() * 1000)}"})
+        with urllib.request.urlopen(req, timeout=4) as r:
+            data = json.loads(r.read())
+        if str(data.get("status", "ok")).lower() not in ("ok", "zero_results"):
+            raise RuntimeError(f"ola {data.get('status')} {data.get('error_message', '')}")
+        return _format_google(data.get("results", []))  # same result shape as Google
     q = urllib.parse.urlencode({"format": "jsonv2", "lat": lat, "lon": lon, "zoom": 18,
                                 "addressdetails": 1, "accept-language": "en"})
     req = urllib.request.Request(f"{GEO_URL}?{q}", headers={
@@ -223,7 +238,7 @@ def place_name(lat: float, lon: float, dev: str | None = None) -> str | None:
     """Street / area name for a van position. None while not known yet (next refresh fills it in)."""
     if os.getenv("GEOCODE", "on").lower() in ("off", "0", "false"):
         return None
-    google = _provider() == "google"
+    google = _provider() in ("google", "ola")  # paid-tier providers: daily cap, no 1-per-second rule
     if dev:  # van hardly moved: keep its last name, no new lookup
         last = store.get(f"geo:last:{dev}")
         if last and _km(last, {"lat": lat, "lon": lon}) * 1000 < (60 if google else 25):
@@ -235,7 +250,8 @@ def place_name(lat: float, lon: float, dev: str | None = None) -> str | None:
             return (store.get(f"geo:last:{dev}") or {}).get("name") if dev else None
         day = f"geo:count:{time.strftime('%Y-%m-%d')}"
         used = store.get(day) or 0
-        if google and used >= int(os.getenv("GEO_DAILY_MAX", "300")):
+        cap = int(os.getenv("GEO_DAILY_MAX", "2500" if _provider() == "ola" else "300"))
+        if google and used >= cap:
             return (store.get(f"geo:last:{dev}") or {}).get("name") if dev else None
         if not google:
             store.set("geo:busy", 1, ttl=2)
